@@ -1,12 +1,13 @@
 import numpy
+import numpy as np
 import math
 import scipy.stats
-
+import matplotlib.pyplot as plt
 from KabschAlign import *
 from IterativeMeansAlign import *
-
+from MDAnalysis.core.Timeseries import *
 from MDAnalysis import *
-
+from numpy import *
 from jade import *
 
 
@@ -41,10 +42,11 @@ tmp = []; #tmp will store the LOTS of atomcoords
 print array(b[-1]).shape
 asdf
 """
+count = 0
 dim = 3; Na = 276;
 iterAlign = IterativeMeansAlign();
 tmp = []; #tmp will store the LOTS of atomcoords
-num_coords = 50
+num_coords = 1
 for i in range(num_coords):
 	if i < 10:
 		tm = '00';
@@ -54,14 +56,48 @@ for i in range(num_coords):
 		tm = '';
 	u = MDAnalysis.Universe("lacie/UBQ/native-1/pnas2013-native-1-protein/protein.pdb", "lacie/UBQ/native-1/pnas2013-native-1-protein/pnas2013-native-1-protein-%s.dcd" %(tm+str(i)), permissive=False);
 	atom = u.selectAtoms('backbone');
-	atomcoords = []; frames = [];                    
+	print atom[4:8];
 
-	for ts in u.trajectory:
-		f = atom.coordinates()[4:280, :];
-	#	print f.shape
-		atomcoords.append(f.T);
-		frames.append(ts.frame);
-	tmp.append(atomcoords);
+	atomcoords = []; frames = [];                    
+	numresidues = atom.numberOfResidues()
+
+	phidat = TimeseriesCollection()
+	psidat = TimeseriesCollection()
+
+	#Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
+	for res in range(1,70):
+		print "Processing residue %d" % res
+		#  selection of the atoms involved for the phi for resid '%d' %res
+		## selectAtoms("atom 4AKE %d C"%(res-1), "atom 4AKE %d N"%res, "atom %d 4AKE CA"%res, "atom 4AKE %d C" % res)
+		phi_sel = u.residues[res].phi_selection()
+		if res % 20 == 0: print phi_sel[0], phi_sel[1], phi_sel[2], phi_sel[3], '\n'
+		#  selection of the atoms involved for the psi for resid '%d' %res
+		psi_sel = u.residues[res].psi_selection()
+		if res % 20 == 0: print psi_sel[0], psi_sel[1], psi_sel[2], psi_sel[3]
+		#print array(u.trajectory).shape
+		#collection.addTimeseries(Timeseries.Dihedral(phi_sel))
+		#collection.addTimeseries(Timeseries.Dihedral(psi_sel))
+		phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
+		psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
+
+	#Computes along 10K timesteps (I think...)
+	phidat.compute(u.trajectory)
+	psidat.compute(u.trajectory)
+
+	#Converts to nd-array and changes from [69,1,10K] to [69,10K]
+	phidat =  array(phidat)
+	phidat = phidat.reshape(phidat.shape[0],phidat.shape[2])
+	psidat =  array(psidat)
+	psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
+	print phidat.shape
+	
+	dihedral_dat = np.zeros((69,4,10000))
+	#Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
+	dihedral_dat[:,0,:] = np.sin(phidat)
+	dihedral_dat[:,1,:] = np.cos(phidat)
+	dihedral_dat[:,2,:] = np.sin(psidat)
+	dihedral_dat[:,3,:] = np.cos(psidat)
+
 print array(tmp).shape
 itr = []; avgCoords = []; eRMSD = []; newCoords = [];
 
@@ -128,7 +164,9 @@ print 'fig2'
 plt.show();
 
 print numpy.shape(numpy.cov(coords));
-[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
+numpy.save('cov_ca.npy', numpy.cov(coords));
+[pcas,pcab] = numpy.linalg.eigh(numpy.cov(coords));
+#numpy.save('pcab_ca.npy', pcab);
 print pcas.shape, pcab.shape
 print 'pcas: ', pcas
 si = numpy.argsort(-pcas.ravel()); print si;
