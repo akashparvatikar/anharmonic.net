@@ -10,44 +10,16 @@ from MDAnalysis import *
 from numpy import *
 from jade import *
 
+#a is mem-mapped array, b is array in RAM we are adding to a.       
+def mmap_concat(a,b):
+	c = np.memmap('dihedral_data.array', dtype='float32', mode='r+', shape=(276,a.shape[1]+b.shape[1]), order='F')
+	c[:, a.shape[1]: ] = b
+	return c
 
-def average_coords(a):
-	if len(a) == 1:
-			return iterAlign.iterativeMeans(a[0], 0.001, 4);
-	else:
-		avgCoords = np.zeros((3,69))
-		for i in range(len(a)):
-			tmpa, avgCoords[:,i], tmpc, tmpd = iterAlign.iterativeMeans(cacoords[i], 0.001, 4);
-		return average_coords(avgCoords, 0.001, 4);       
-"""
-u = MDAnalysis.Universe('./ubq_1111.pdb', './UBQ_500ns.dcd', permissive=False);
-#u = MDAnalysis.Universe('../../tmp/2V93_1.pdb', '../../tmp/2V93.dcd', permissive=False);
-#ca = u.selectAtoms('name CA');
-ca = u.selectAtoms('backbone');
-cacoords = []; frames = [];
-
-for ts in u.trajectory:
-	f = ca.coordinates();
-	cacoords.append(f.T);
-	frames.append(ts.frame);
-
-print numpy.shape(cacoords);
-
-
-dim = 3; Na = 69;
-iterAlign = IterativeMeansAlign();
-tmp = []; #tmp will store the LOTS of atomcoords
-
-[a, b, c, d] = iterAlign.iterativeMeans(cacoords, 0.001, 4);
-print array(b[-1]).shape
-asdf
-"""
-count = 0
-dim = 3; Na = 276;
-iterAlign = IterativeMeansAlign();
-tmp = []; #tmp will store the LOTS of atomcoords
-num_coords = 1
-for i in range(num_coords):
+#Main Code
+num_traj = 1
+rad_gyr = []
+for i in range(num_traj):
 	if i < 10:
 		tm = '00';
 	elif i < 100:
@@ -56,27 +28,20 @@ for i in range(num_coords):
 		tm = '';
 	u = MDAnalysis.Universe("lacie/UBQ/native-1/pnas2013-native-1-protein/protein.pdb", "lacie/UBQ/native-1/pnas2013-native-1-protein/pnas2013-native-1-protein-%s.dcd" %(tm+str(i)), permissive=False);
 	atom = u.selectAtoms('backbone');
-	print atom[4:8];
-
-	atomcoords = []; frames = [];                    
-	numresidues = atom.numberOfResidues()
 
 	phidat = TimeseriesCollection()
 	psidat = TimeseriesCollection()
 
 	#Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
+	print '---Processing Trajectory %d' %(i+1)
+	print '---Intentionally excluding first residue and all residues after the 70th---';
+	
 	for res in range(1,70):
-		print "Processing residue %d" % res
 		#  selection of the atoms involved for the phi for resid '%d' %res
-		## selectAtoms("atom 4AKE %d C"%(res-1), "atom 4AKE %d N"%res, "atom %d 4AKE CA"%res, "atom 4AKE %d C" % res)
 		phi_sel = u.residues[res].phi_selection()
-		if res % 20 == 0: print phi_sel[0], phi_sel[1], phi_sel[2], phi_sel[3], '\n'
 		#  selection of the atoms involved for the psi for resid '%d' %res
 		psi_sel = u.residues[res].psi_selection()
-		if res % 20 == 0: print psi_sel[0], psi_sel[1], psi_sel[2], psi_sel[3]
-		#print array(u.trajectory).shape
-		#collection.addTimeseries(Timeseries.Dihedral(phi_sel))
-		#collection.addTimeseries(Timeseries.Dihedral(psi_sel))
+
 		phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 		psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
@@ -89,7 +54,6 @@ for i in range(num_coords):
 	phidat = phidat.reshape(phidat.shape[0],phidat.shape[2])
 	psidat =  array(psidat)
 	psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
-	print phidat.shape
 	
 	dihedral_dat = np.zeros((69,4,10000))
 	#Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
@@ -97,7 +61,17 @@ for i in range(num_coords):
 	dihedral_dat[:,1,:] = np.cos(phidat)
 	dihedral_dat[:,2,:] = np.sin(psidat)
 	dihedral_dat[:,3,:] = np.cos(psidat)
-
+	dihedral_dat = dihedral_dat.reshape(-1,10000)
+	
+	if i == 0:
+		fulldat = np.memmap('dihedral_data.array', dtype='float32', mode='w+', shape=(276, 10000))
+		fulldat[:,:] = dihedral_dat
+	else:
+		fulldat = mmap_concat(fulldat, dihedral_dat);
+	for ts in u.trajectory:
+		rad_gyr.append( atom.radiusOfGyration() )
+#Not sure if this is needed, decided to leave in in case some stats could be made off phi/psi angles
+"""
 print array(tmp).shape
 itr = []; avgCoords = []; eRMSD = []; newCoords = [];
 
@@ -194,19 +168,24 @@ print numpy.shape(pcacoffs);
 ax.scatter(pcacoffs[0,:], pcacoffs[1,:], pcacoffs[2,:], marker='o', c=[0.6,0.6,0.6]);
 print 'fig4';
 plt.show();
+"""
 
 # some set up for running JADE
+print 'fulldat: ', fulldat.shape
 Ncyc  = 1;
-subspace = 30;
+subspace = 20;
 lastEig = subspace; # number of eigen-modes to be considered
 numOfIC = subspace; # number of independent components to be resolved
 
-icajade = jadeR(coords, lastEig); 
-print numpy.shape(icajade);
-icacoffs = numpy.dot(icajade, caDevsMD);
+plt.plot(range(10000),rad_gyr[:], 'r--', lw=2)
+plt.show()
+
+icajade = jadeR(fulldat, lastEig); 
+print 'icajade: ', numpy.shape(icajade);
+icacoffs = icajade.dot(fulldat)
 icacoffs = numpy.asarray(icacoffs); 
 print 'icacoffs: ', numpy.shape(icacoffs);
-numpy.save('ica.npy', icacoffs)
+#numpy.save('ica.npy', icacoffs)
 fig = plt.figure();
 ax = fig.add_subplot(111, projection='3d');
 ax.scatter(icacoffs[0,:], icacoffs[1,:], icacoffs[2,:], marker='o', c=[0.6,0.6,0.6]); 
