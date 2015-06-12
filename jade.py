@@ -31,8 +31,10 @@ future.
 from sys import stdout 
 from numpy import abs, append, arange, arctan2, argsort, array, concatenate, \
     cos, diag, dot, eye, float32, float64, matrix, multiply, ndarray, newaxis, \
-    sign, sin, sqrt, zeros
+    sign, sin, sqrt, zeros, save
 from numpy.linalg import eig, pinv
+import scipy.io as io
+import numpy as np
 
 
 def jadeR(X, m=None, verbose=True):
@@ -122,7 +124,7 @@ def jadeR(X, m=None, verbose=True):
         print >> stdout, "jade -> Looking for %d sources" % m
         print >> stdout, "jade -> Removing the mean value"
     X -= X.mean(1)
-    
+    #np.save('prewhite.npy', X);
     # whitening & projection onto signal subspace
     # ===========================================
     if verbose:
@@ -130,18 +132,22 @@ def jadeR(X, m=None, verbose=True):
     [D,U] = eig((X * X.T) / float(T)) # An eigen basis for the sample covariance matrix
     k = D.argsort()
     Ds = D[k] # Sort by increasing variances
-    PCs = arange(n-1, n-m-1, -1)    # The m most significant princip. comp. by decreasing variance
+    PCs = arange(n-m, n)    # The m most significant princip. comp. by decreasing variance
 
     # --- PCA  ----------------------------------------------------------
     B = U[:,k[PCs]].T    # % At this stage, B does the PCA on m components
     
     # --- Scaling  ------------------------------------------------------
     scales = sqrt(Ds[PCs]) # The scales of the principal components .
-    B = diag(1./scales) * B  # Now, B does PCA followed by a rescaling = sphering
+    B = diag(1./scales) * B 
+    iB = U[:,k[PCs]] * np.diag(scales); # Now, B does PCA followed by a rescaling = sphering
     #B[-1,:] = -B[-1,:] # GB: to make it compatible with octave
     # --- Sphering ------------------------------------------------------
     X = B * X # %% We have done the easy part: B is a whitening matrix and X is white.
-    
+    #np.save('eigv.npy', U);
+    #np.save('eigval.npy', D);
+    #np.save('whitener.npy', B);
+    #np.save('whitened.npy', X);
     del U, D, Ds, k, PCs, scales 
     
     # NOTE: At this stage, X is a PCA analysis in m components of the real data, except that
@@ -163,14 +169,14 @@ def jadeR(X, m=None, verbose=True):
         print >> stdout, "jade -> Estimating cumulant matrices"
     
     # Reshaping of the data, hoping to speed up things a little bit...
-    X = X.T
     dimsymm = (m * ( m + 1)) / 2	# Dim. of the space of real symm matrices
     nbcm = dimsymm  # number of cumulant matrices
     CM = matrix(zeros([m,m*nbcm], dtype=float64)) # Storage for cumulant matrices
     R = matrix(eye(m, dtype=float64))
     Qij = matrix(zeros([m,m], dtype=float64)) # Temp for a cum. matrix
     Xim	= zeros(m, dtype=float64) # Temp
-    Xijm = zeros(m, dtype=float64) # Temp
+    Xijm = zeros(m, dtype=float64)
+    scale = np.ones((m,1))/T # Temp
     #Uns = numpy.ones([1,m], dtype=numpy.uint32)    # for convenience
     # GB: we don't translate that one because NumPy doesn't need Tony's rule
     
@@ -179,19 +185,17 @@ def jadeR(X, m=None, verbose=True):
     Range = arange(m) # will index the columns of CM where to store the cum. mats.
     
     for im in range(m):
-        Xim = X[:,im]
+        Xim = X[im,:]
         Xijm = multiply(Xim, Xim)
         # Note to myself: the -R on next line can be removed: it does not affect
         # the joint diagonalization criterion
-        Qij = multiply(Xijm, X).T * X / float(T)\
-            - R - 2 * dot(R[:,im], R[:,im].T)
-        CM[:,Range] = Qij 
+        Qij = multiply(scale*Xijm, X) * X.T - R - 2 * dot(R[:,im], R[:,im].T)
+        CM[:,Range] = Qij
         Range = Range  + m 
         for jm in range(im):
-            Xijm = multiply(Xim, X[:,jm])
-            Qij = sqrt(2) * multiply(Xijm, X).T * X / float(T) \
-                - R[:,im] * R[:,jm].T - R[:,jm] * R[:,im].T
-            CM[:,Range]	= Qij
+            Xijm = multiply(Xim, X[jm,:])
+            Qij = multiply(scale*Xijm, X) * X.T - R[:,im] * R[:,jm].T - R[:,jm] * R[:,im].T
+            CM[:,Range]	= np.sqrt(2) * Qij
             Range = Range + m
 
     # Now we have nbcm = m(m+1)/2 cumulants matrices stored in a big m x m*nbcm array.
@@ -207,7 +211,7 @@ def jadeR(X, m=None, verbose=True):
         Range = Range + m
     Off = (multiply(CM,CM).sum(axis=0)).sum(axis=0) - On
     
-    seuil = 1.0e-6 / sqrt(T) # % A statistically scaled threshold on `small" angles
+    seuil = (1.0/sqrt(T))/100. # % A statistically scaled threshold on `small" angles
     encore = True
     sweep = 0 # % sweep number
     updates = 0 # % Total number of rotations
@@ -223,7 +227,7 @@ def jadeR(X, m=None, verbose=True):
     Gain = 0
     
     # Joint diagonalization proper
-    
+    #np.save('cm.npy', CM);
     if verbose:
         print >> stdout, "jade -> Contrast optimization by joint diagonalization"
     
@@ -248,7 +252,7 @@ def jadeR(X, m=None, verbose=True):
                 toff = gg[0,1] + gg[1,0]
                 theta = 0.5 * arctan2(toff, ton + sqrt(ton * ton + toff * toff))
                 Gain = (sqrt(ton * ton + toff * toff) - ton) / 4.0
-                
+                #if q % 6 == 0: print g, '\n', gg, '\n', ton, '\n', toff, '\n', theta, '\n', Gain; 
                 # Givens update
                 if abs(theta) > seuil:
                     encore = True
@@ -273,7 +277,7 @@ def jadeR(X, m=None, verbose=True):
     
     # A separating matrix
     # ===================
-    
+    #np.save('v.npy', V);
     B = V.T * B
     
     # Permute the rows of the separating matrix B to get the most energetic components first.
@@ -283,11 +287,12 @@ def jadeR(X, m=None, verbose=True):
     if verbose:
         print >> stdout, "jade -> Sorting the components"
     
-    A = pinv(B)
+    A = iB.dot(V);
+    #np.save('a.npy', A);
     keys =  array(argsort(multiply(A,A).sum(axis=0)[0]))[0]
     B = B[keys,:]
     B = B[::-1,:]     # % Is this smart ?
-    
+   # np.save('B.npy', B);
     
     if verbose:
         print >> stdout, "jade -> Fixing the signs"
@@ -295,6 +300,7 @@ def jadeR(X, m=None, verbose=True):
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
+    np.save('pyica.npy', B);
     return B.astype(origtype)
     
     
@@ -420,3 +426,5 @@ def jadeR(X, m=None, verbose=True):
     #
     # Note 2) A test module that compares NumPy output with Octave (MATLAB
     # clone) output of the original MATLAB script is available
+if __name__ == '__main__':
+	jadeR(np.load(sys.argv[1]));

@@ -16,6 +16,15 @@ def mmap_concat(a,b):
 	c[:, a.shape[1]: ] = b
 	return c
 
+def phisel(res):
+#MDAnalysis' phi_selection requires a segid be present, this doesn't.  use if MDanalysis fails.
+	return res.universe.selectAtoms('resid %d and name C' %(res.id-1) ) + res.N + res.CA + res.C
+
+def psisel(res):
+#MDAnalysis' phi_selection requires a segid be present, this doesn't.  use if MDanalysis fails.
+	return res.N + res.CA + res.C + res.universe.selectAtoms('resid %d and name N' %(res.id+1) )
+
+
 #Main Code
 num_traj = 1
 rad_gyr = []
@@ -26,7 +35,7 @@ for i in range(num_traj):
 		tm = '0';
 	else:
 		tm = '';
-	u = MDAnalysis.Universe("lacie/UBQ/native-1/pnas2013-native-1-protein/protein.pdb", "lacie/UBQ/native-1/pnas2013-native-1-protein/pnas2013-native-1-protein-%s.dcd" %(tm+str(i)), permissive=False);
+	u = MDAnalysis.Universe("lacie-kbhdata/1KBHww.pdb", "lacie-kbhdata/1KBH_%s_50k.dcd" %(str(i+1)), permissive=False);
 	atom = u.selectAtoms('backbone');
 
 	phidat = TimeseriesCollection()
@@ -35,17 +44,20 @@ for i in range(num_traj):
 	#Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
 	print '---Processing Trajectory %d' %(i+1)
 	print '---Intentionally excluding first residue and all residues after the 70th---';
-	
-	for res in range(1,70):
+	numres = 0
+	trajlen = len(u.trajectory)
+	for res in range(1,atom.numberOfResidues()-1):
+		print res
 		#  selection of the atoms involved for the phi for resid '%d' %res
-		phi_sel = u.residues[res].phi_selection()
+		phi_sel = phisel(u.residues[res])
 		#  selection of the atoms involved for the psi for resid '%d' %res
-		psi_sel = u.residues[res].psi_selection()
+		psi_sel = psisel(u.residues[res])
 
 		phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 		psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
+		numres = numres + 1
 
-	#Computes along 10K timesteps (I think...)
+	#Computes along 10K timesteps
 	phidat.compute(u.trajectory)
 	psidat.compute(u.trajectory)
 
@@ -55,16 +67,16 @@ for i in range(num_traj):
 	psidat =  array(psidat)
 	psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
 	
-	dihedral_dat = np.zeros((69,4,10000))
+	dihedral_dat = np.zeros((numres,4,trajlen))
 	#Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
 	dihedral_dat[:,0,:] = np.sin(phidat)
 	dihedral_dat[:,1,:] = np.cos(phidat)
 	dihedral_dat[:,2,:] = np.sin(psidat)
 	dihedral_dat[:,3,:] = np.cos(psidat)
-	dihedral_dat = dihedral_dat.reshape(-1,10000)
+	dihedral_dat = dihedral_dat.reshape(-1,trajlen)
 	
 	if i == 0:
-		fulldat = np.memmap('dihedral_data.array', dtype='float32', mode='w+', shape=(276, 10000))
+		fulldat = np.memmap('dihedral_data.array', dtype='float32', mode='w+', shape=(numres*4, trajlen))
 		fulldat[:,:] = dihedral_dat
 	else:
 		fulldat = mmap_concat(fulldat, dihedral_dat);
@@ -177,15 +189,16 @@ subspace = 20;
 lastEig = subspace; # number of eigen-modes to be considered
 numOfIC = subspace; # number of independent components to be resolved
 
-plt.plot(range(10000),rad_gyr[:], 'r--', lw=2)
+plt.plot(range(trajlen),rad_gyr[:], 'r--', lw=2)
 plt.show()
 
-icajade = jadeR(fulldat, lastEig); 
+icajade = jadeR(fulldat, lastEig);
+np.save('icajade.npy', icajade) 
 print 'icajade: ', numpy.shape(icajade);
 icacoffs = icajade.dot(fulldat)
 icacoffs = numpy.asarray(icacoffs); 
 print 'icacoffs: ', numpy.shape(icacoffs);
-#numpy.save('ica.npy', icacoffs)
+numpy.save('icacoffs.npy', icacoffs)
 fig = plt.figure();
 ax = fig.add_subplot(111, projection='3d');
 ax.scatter(icacoffs[0,:], icacoffs[1,:], icacoffs[2,:], marker='o', c=[0.6,0.6,0.6]); 
