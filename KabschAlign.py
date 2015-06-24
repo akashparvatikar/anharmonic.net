@@ -13,11 +13,11 @@ class KabschAlign(object):
 		Constructor
 		"""
 
-	def kabsch(self, toXYZ, fromXYZ):
+	def kabsch(self, toXYZ, fromXYZ, counter):
 		"""
 		Input is a 3 x N array of coordinates.
 		"""
-		
+		# This file has been edited to produce identical results as the original matlab implementation.
 		len1 = numpy.shape(fromXYZ);
 		len2 = numpy.shape(toXYZ);
 	
@@ -25,20 +25,24 @@ class KabschAlign(object):
 			print 'KABSCH: unequal array sizes';
 			return;
 		
-		m1 = numpy.mean(fromXYZ, 1); # print numpy.shape(m1);
-		m2 = numpy.mean(toXYZ, 1); 
+		m1 = numpy.mean(fromXYZ, 1).reshape((len1[0],1)); # print numpy.shape(m1);
+		m2 = numpy.mean(toXYZ, 1).reshape((len2[0],1)); 
 
-		tmp1 = numpy.reshape(numpy.tile(m1,(len1[1])), (len1[0],len1[1]));
-		tmp2 = numpy.reshape(numpy.tile(m2,(len2[1])), (len2[0],len2[1])); 
-		t1 = numpy.reshape(fromXYZ - tmp1, (len1[0], len1[1]));
-		t2 = numpy.reshape(toXYZ - tmp2, (len2[0],len2[1]));
+		tmp1 = numpy.tile(m1,len1[1]);
+		tmp2 = numpy.tile(m1,len2[1]);
+
+		assert numpy.allclose(tmp1, tmp2);
+		assert tmp1.shape == fromXYZ.shape;
+		assert tmp2.shape == toXYZ.shape;
+
+		t1 = fromXYZ - tmp1;
+		t2 = toXYZ - tmp2;
 
 		[u, s, wh] = numpy.linalg.svd(numpy.dot(t2,t1.T));
 		w = wh.T;
 
 		R = numpy.dot(numpy.dot(u,[[1, 0, 0],[0, 1, 0],[0, 0, numpy.linalg.det(numpy.dot(u,w.T))]]), w.T); 
-  		T = m2 - numpy.dot(R,m1); 
-		#print numpy.shape(m2), numpy.shape(R), numpy.shape(m1); 
+  		T = m2 - numpy.dot(R,m1);
 
 		tmp3 = numpy.reshape(numpy.tile(T,(len2[1])),(len1[0],len1[1]));
   		err = toXYZ - numpy.dot(R,fromXYZ) - tmp3; 

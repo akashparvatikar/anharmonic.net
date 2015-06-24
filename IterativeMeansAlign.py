@@ -17,6 +17,9 @@ class IterativeMeansAlign(object):
 	def iterativeMeans(self, coords, eps, maxIter):
 		# all coordinates are expected to be passed as a (Ns x 3 x Na)  array
 		# where Na = number of atoms; Ns = number of snapshots
+	
+		# This file has been edited to produce identical results as the original matlab implementation.
+
 		Ns = numpy.shape(coords)[0]; print Ns; 
 		dim = numpy.shape(coords)[1]; print dim;
 		Na = numpy.shape(coords)[2]; print Na;
@@ -35,15 +38,14 @@ class IterativeMeansAlign(object):
 			avgCoords.append(mnC);
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
-			#	print fromXYZ.shape
-				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
+				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ, i);
 				tmpRMSD.append(xRMSD); 
-				tmp = numpy.reshape(numpy.tile(T, Na), (Na, dim)).T;
+				tmp = numpy.tile(T, Na);
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
 				coords[i] = pxyz;
 			eRMSD.append(numpy.array(tmpRMSD).T);
 			newMnC = numpy.mean(coords,0); 
-			err = math.sqrt(sum((mnC.flatten()-newMnC.flatten())**2))
+			err = math.sqrt(sum( (mnC.flatten()-newMnC.flatten())**2) )
 			print itr, err
 			if err <= eps or itr == maxIter:
 				ok = 1;

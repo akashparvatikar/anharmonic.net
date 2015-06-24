@@ -18,6 +18,12 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# This file has been edited to produce identical results as that of the
+# original Matlab implementation. - Gabe V
+#
+# This file operates with double precision.  Jade with single precision
+# can produce slightly different results. (IC's differ by ~ .0001).
 #######################################################################
 
 """
@@ -119,12 +125,14 @@ def jadeR(X, m=None, verbose=True):
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
         "jade -> Do not ask more sources (%d) than sensors (%d )here!!!" % (m,n)
-
+    #np.save('premean.npy', X);  # Debugging help -- Gabe V
     if verbose:
         print >> stdout, "jade -> Looking for %d sources" % m
         print >> stdout, "jade -> Removing the mean value"
-    X -= X.mean(1)
-    #np.save('prewhite.npy', X);
+    xmean = X.mean(axis = 1).reshape((n,1));
+    X = X - xmean.dot( np.ones((1,T)) );
+    assert X.dtype == 'float64';
+    #np.save('prewhite.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
     if verbose:
@@ -132,22 +140,23 @@ def jadeR(X, m=None, verbose=True):
     [D,U] = eig((X * X.T) / float(T)) # An eigen basis for the sample covariance matrix
     k = D.argsort()
     Ds = D[k] # Sort by increasing variances
-    PCs = arange(n-m, n)    # The m most significant princip. comp. by decreasing variance
+    PCs = arange(n-m, n)    # The m most significant princip. comp. by *increasing* variance
 
     # --- PCA  ----------------------------------------------------------
     B = U[:,k[PCs]].T    # % At this stage, B does the PCA on m components
     
     # --- Scaling  ------------------------------------------------------
     scales = sqrt(Ds[PCs]) # The scales of the principal components .
-    B = diag(1./scales) * B 
-    iB = U[:,k[PCs]] * np.diag(scales); # Now, B does PCA followed by a rescaling = sphering
+    B = diag(1./scales) * B  # Now, B does PCA followed by a rescaling = sphering
     #B[-1,:] = -B[-1,:] # GB: to make it compatible with octave
     # --- Sphering ------------------------------------------------------
     X = B * X # %% We have done the easy part: B is a whitening matrix and X is white.
-    #np.save('eigv.npy', U);
-    #np.save('eigval.npy', D);
-    #np.save('whitener.npy', B);
-    #np.save('whitened.npy', X);
+  
+    #np.save('eigv.npy', U);  # Debugging help -- Gabe V
+    #np.save('eigval.npy', D);  # Debugging help -- Gabe V
+    #np.save('whitener.npy', B);  # Debugging help -- Gabe V
+    #np.save('whitened.npy', X);  # Debugging help -- Gabe V
+
     del U, D, Ds, k, PCs, scales 
     
     # NOTE: At this stage, X is a PCA analysis in m components of the real data, except that
@@ -211,7 +220,7 @@ def jadeR(X, m=None, verbose=True):
         Range = Range + m
     Off = (multiply(CM,CM).sum(axis=0)).sum(axis=0) - On
     
-    seuil = (1.0/sqrt(T))/100. # % A statistically scaled threshold on `small" angles
+    seuil = 1.0e-2 / sqrt(T) # % A statistically scaled threshold on `small" angles
     encore = True
     sweep = 0 # % sweep number
     updates = 0 # % Total number of rotations
@@ -227,7 +236,7 @@ def jadeR(X, m=None, verbose=True):
     Gain = 0
     
     # Joint diagonalization proper
-    #np.save('cm.npy', CM);
+    #np.save('cm.npy', CM);  # Debugging help -- Gabe V
     if verbose:
         print >> stdout, "jade -> Contrast optimization by joint diagonalization"
     
@@ -252,7 +261,7 @@ def jadeR(X, m=None, verbose=True):
                 toff = gg[0,1] + gg[1,0]
                 theta = 0.5 * arctan2(toff, ton + sqrt(ton * ton + toff * toff))
                 Gain = (sqrt(ton * ton + toff * toff) - ton) / 4.0
-                #if q % 6 == 0: print g, '\n', gg, '\n', ton, '\n', toff, '\n', theta, '\n', Gain; 
+                
                 # Givens update
                 if abs(theta) > seuil:
                     encore = True
@@ -277,7 +286,7 @@ def jadeR(X, m=None, verbose=True):
     
     # A separating matrix
     # ===================
-    #np.save('v.npy', V);
+    #np.save('v.npy', V);  # Debugging help -- Gabe V
     B = V.T * B
     
     # Permute the rows of the separating matrix B to get the most energetic components first.
@@ -287,12 +296,12 @@ def jadeR(X, m=None, verbose=True):
     if verbose:
         print >> stdout, "jade -> Sorting the components"
     
-    A = iB.dot(V);
-    #np.save('a.npy', A);
+    A = pinv(B)
+    #np.save('a.npy', A);  # Debugging help -- Gabe V
     keys =  array(argsort(multiply(A,A).sum(axis=0)[0]))[0]
     B = B[keys,:]
     B = B[::-1,:]     # % Is this smart ?
-   # np.save('B.npy', B);
+    #np.save('B.npy', B);  # Debugging help -- Gabe V
     
     if verbose:
         print >> stdout, "jade -> Fixing the signs"
@@ -300,7 +309,7 @@ def jadeR(X, m=None, verbose=True):
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
-    np.save('pyica.npy', B);
+    #np.save('pyica.npy', B);  # Debugging help -- Gabe V
     return B.astype(origtype)
     
     
@@ -427,4 +436,9 @@ def jadeR(X, m=None, verbose=True):
     # Note 2) A test module that compares NumPy output with Octave (MATLAB
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
-	jadeR(np.load(sys.argv[1]));
+	"""	
+	a = io.loadmat('awq_coords.mat');
+	mat = a['COORDS'];
+	jadeR(mat, m=60);
+	#modify to your coordinate file if interested
+	"""
