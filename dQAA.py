@@ -107,7 +107,7 @@ def qaa(num_traj, ica_dim, val):
 	if (val.graph):
 		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
-		ax.scatter(icacoffs[0,:], icacoffs[1,:], icacoffs[2,:], marker='o', c=[0.6,0.6,0.6]); 
+		ax.scatter(icacoffs[0,::10], icacoffs[1,::10], icacoffs[2,::10], marker='o', c=[0.6,0.6,0.6]); 
 		print 'First 3-Dimensions of \'icacoffs\'';
 		plt.show();
 	
