@@ -6,8 +6,6 @@ import scipy.stats
 import matplotlib.pyplot as plt
 from MDAnalysis.core.Timeseries import *
 from MDAnalysis import *
-from KabschAlign import *
-from IterativeMeansAlign import *
 from jade import *
 
 #a is mem-mapped array, b is array in RAM we are adding to a.       
@@ -35,7 +33,7 @@ def qaa(num_traj, ica_dim):
 		
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("lacie-kbhdata/1KBHww.pdb", "lacie-kbhdata/1KBH_%03i_50k.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("./traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "./traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
 		except:
 			print "You must edit \'dQAA.py\' to fit your trajectory format!";
 			exit();
@@ -52,7 +50,7 @@ def qaa(num_traj, ica_dim):
 	
 		#	Tailor following for-loop to iterate through your residues of interest
 		for res in range(1,atom.numberOfResidues()-1):
-			print res
+			#print res
 			#	selection of the atoms involved for the phi for resid '%d' %res
 			phi_sel = phisel(u.residues[res])
 			#	selection of the atoms involved for the psi for resid '%d' %res
@@ -84,8 +82,6 @@ def qaa(num_traj, ica_dim):
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
-		for ts in u.trajectory:
-			rad_gyr.append( atom.radiusOfGyration() )
 	
 	#	some set up for running JADE
 	print 'fulldat: ', fulldat.shape
@@ -94,16 +90,13 @@ def qaa(num_traj, ica_dim):
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
 	
-	plt.plot(range(trajlen),rad_gyr[:], 'r--', lw=2)
-	plt.show()
-	
 	icajade = jadeR(fulldat, lastEig);
-	np.save('icajade.npy', icajade) 
+	np.save('icajadeKBH_30.npy', icajade) 
 	print 'icajade shape: ', numpy.shape(icajade);
 	icacoffs = icajade.dot(fulldat)
 	icacoffs = numpy.asarray(icacoffs); 
 	print 'icacoffs shape: ', numpy.shape(icacoffs);
-	numpy.save('icacoffs.npy', icacoffs)
+	numpy.save('icacoffsKBH_30.npy', icacoffs)
 	
 	fig = plt.figure();
 	ax = fig.add_subplot(111, projection='3d');
