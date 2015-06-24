@@ -4,9 +4,12 @@ from numpy import *
 import math
 import scipy.stats
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from MDAnalysis.core.Timeseries import *
 from MDAnalysis import *
+import MDAnalysis
 from jade import *
+import argparse
 
 #a is mem-mapped array, b is array in RAM we are adding to a.       
 def mmap_concat(a,b):
@@ -28,7 +31,7 @@ def psisel(res):
 num_traj = 1
 rad_gyr = []
 
-def qaa(num_traj, ica_dim):
+def qaa(num_traj, ica_dim, val):
 	for i in range(num_traj):
 		
 		#	!Edit to your trajectory format!
@@ -84,26 +87,40 @@ def qaa(num_traj, ica_dim):
 			fulldat = mmap_concat(fulldat, dihedral_dat);
 	
 	#	some set up for running JADE
-	print 'fulldat: ', fulldat.shape
+	if val.debug: print 'fulldat: ', fulldat.shape
 	Ncyc  = 1;
 	subspace = ica_dim;
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
-	
+	#	Runs jade	
 	icajade = jadeR(fulldat, lastEig);
-	np.save('icajadeKBH_30.npy', icajade) 
-	print 'icajade shape: ', numpy.shape(icajade);
+
+	if (val.save): np.save('icajadeKBH_30.npy', icajade) 
+	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
+	#	Performs change of basis
 	icacoffs = icajade.dot(fulldat)
 	icacoffs = numpy.asarray(icacoffs); 
-	print 'icacoffs shape: ', numpy.shape(icacoffs);
-	numpy.save('icacoffsKBH_30.npy', icacoffs)
 	
-	fig = plt.figure();
-	ax = fig.add_subplot(111, projection='3d');
-	ax.scatter(icacoffs[0,:], icacoffs[1,:], icacoffs[2,:], marker='o', c=[0.6,0.6,0.6]); 
-	print 'First 3-Dimensions of \'icacoffs\'';
-	plt.show();
+	if val.debug: print 'icacoffs shape: ', numpy.shape(icacoffs);
+	if (val.save): numpy.save('icacoffsKBH_30.npy', icacoffs)
+	
+	if (val.graph):
+		fig = plt.figure();
+		ax = fig.add_subplot(111, projection='3d');
+		ax.scatter(icacoffs[0,:], icacoffs[1,:], icacoffs[2,:], marker='o', c=[0.6,0.6,0.6]); 
+		print 'First 3-Dimensions of \'icacoffs\'';
+		plt.show();
+	
+	return icacoffs;
 
 if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
+	parser.add_argument('-v', action='store_true', dest='verbose', default=False, help='Runs program verbosely.')
+	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
+	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
+
+	values = parser.parse_args()
+	if values.debug: values.verbose = True;
 #	First is number of trajectories, second is dimensions you want jade to consider
-	qaa(1, 30);
+	qaa(3, 30, values);
