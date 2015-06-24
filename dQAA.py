@@ -105,4 +105,5 @@ def qaa(num_traj, ica_dim):
 	plt.show();
 
 if __name__ == '__main__':
+#	First is number of trajectories, second is dimensions you want jade to consider
 	qaa(1, 30);
