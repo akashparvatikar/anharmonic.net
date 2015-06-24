@@ -105,4 +105,4 @@ def qaa(num_traj, ica_dim):
 	plt.show();
 
 if __name__ == '__main__':
-	qaa(1, 40);
+	qaa(1, 30);
