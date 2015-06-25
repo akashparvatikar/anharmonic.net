@@ -10,6 +10,8 @@ from MDAnalysis import *
 import MDAnalysis
 from jade import *
 import argparse
+import warnings
+import timing
 
 #a is mem-mapped array, b is array in RAM we are adding to a.       
 def mmap_concat(a,b):
@@ -26,42 +28,42 @@ def psisel(res):
 #MDAnalysis' phi_selection requires a segid be present while this doesn't. 
 	return res.N + res.CA + res.C + res.universe.selectAtoms('resid %d and name N' %(res.id+1) )
 
-
-#Main Code
-num_traj = 1
-rad_gyr = []
-
-def qaa(num_traj, ica_dim, val):
-	for i in range(num_traj):
-		
+def qaa(config, val):
+	num_traj = config['numOfTraj'];
+	ica_dim = config['icadim'];
+	start_traj = config['startTraj'];
+	for i in range(start_traj,num_traj+start_traj):
 		#	!Edit to your trajectory format!
 		try:
 			u = MDAnalysis.Universe("wqaa/traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "wqaa/traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
 		except:
-			print "You must edit \'dQAA.py\' to fit your trajectory format!";
+			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
 			exit();
 	
 		atom = u.selectAtoms('backbone');
 	
 		phidat = TimeseriesCollection()
 		psidat = TimeseriesCollection()
-	
+		if (start_traj != 0):
+			warnings.warn('Excluding trajectories %i-%i!' %(1, start_traj));
+
 		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
-		print '---Processing Trajectory %i---' %(i+1)
+		if val.verbose: timing.log('Processing Trajectory %i' %(i+1));
 		numres = 0
 		trajlen = len(u.trajectory)
 	
-		#	Tailor following for-loop to iterate through your residues of interest
-		for res in range(1,atom.numberOfResidues()-1):
-			#print res
-			#	selection of the atoms involved for the phi for resid '%d' %res
+		#	Tailor generateConfig.py for correct for-loop iterations
+		endRes = np.arange(atom.numberOfResidues())[config['endRes']];
+		numres = endRes - config['startRes']; 
+		for res in range(1+config['startRes'], endRes + 1):
+			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res])
-			#	selection of the atoms involved for the psi for resid '%d' %res
+			#	selection of the atoms involved for the psi angle
 			psi_sel = psisel(u.residues[res])
 	
 			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
-			numres = numres + 1
+
 	
 		#	Computes along 10K timesteps
 		phidat.compute(u.trajectory)
@@ -80,29 +82,44 @@ def qaa(num_traj, ica_dim, val):
 		dihedral_dat[2::4,:] = np.sin(psidat)
 		dihedral_dat[3::4,:] = np.cos(psidat)
 		
-		if i == 0:
+		if i == start_traj:
 			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*4, trajlen))
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
-	
+	if val.graph:
+		#	Cumulative Variance to determine JADE subspace
+		[pcas,pcab] = numpy.linalg.eig(numpy.cov(fulldat));
+		si = numpy.argsort(-pcas.ravel());
+		pcaTmp = pcas;
+		pcas = numpy.diag(pcas);
+		pcab = pcab[:,si];
+		
+		fig = plt.figure();
+		ax = fig.add_subplot(111);
+		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
+		ax.plot(y);
+		plt.show();
+
 	#	some set up for running JADE
 	if val.debug: print 'fulldat: ', fulldat.shape
 	Ncyc  = 1;
 	subspace = ica_dim;
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
-	#	Runs jade	
+	#	Runs jade
+	if val.verbose: timing.log('Beginning JADE...');	
 	icajade = jadeR(fulldat, lastEig);
-
-	if (val.save): np.save('icajadeKBH_30.npy', icajade) 
+	if val.verbose: timing.log('Completed JADE...');
+	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
+	
 	#	Performs change of basis
 	icacoffs = icajade.dot(fulldat)
 	icacoffs = numpy.asarray(icacoffs); 
 	
 	if val.debug: print 'icacoffs shape: ', numpy.shape(icacoffs);
-	if (val.save): numpy.save('icacoffsKBH_30.npy', icacoffs)
+	if (val.save) and __name__ == '__main__': numpy.save('icacoffs%s_%i_.npy' %(config['pname'], config['icadim']), icacoffs)
 	
 	if (val.graph):
 		fig = plt.figure();
@@ -111,7 +128,10 @@ def qaa(num_traj, ica_dim, val):
 		print 'First 3-Dimensions of \'icacoffs\'';
 		plt.show();
 	
-	return icacoffs;
+	icamat = {};
+	icamat['icajade'] = icajade;
+	icamat['icacoffs'] = icacoffs;
+	return icamat;
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -123,4 +143,10 @@ if __name__ == '__main__':
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
 #	First is number of trajectories, second is dimensions you want jade to consider
-	qaa(3, 30, values);
+	config = {};
+	config['numOfTraj'] = 1;
+	config['icadim'] = 40;
+	config['pname'] = 'PROTEIN';	#	Edit to fit your protein name
+	config['startRes'] = 0;			# 	All but first
+	config['endRes'] = -2;			#	All but last
+	qaa(config, values);
