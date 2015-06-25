@@ -54,7 +54,7 @@ def qaa(config, val):
 	
 		#	Tailor generateConfig.py for correct for-loop iterations
 		endRes = np.arange(atom.numberOfResidues())[config['endRes']];
-		numres = endRes - config['startRes']; 
+		numres = endRes - config['startRes'];
 		for res in range(1+config['startRes'], endRes + 1):
 			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res])
@@ -65,7 +65,7 @@ def qaa(config, val):
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
 	
-		#	Computes along 10K timesteps
+		#	Computes along whole trajectory
 		phidat.compute(u.trajectory)
 		psidat.compute(u.trajectory)
 	
@@ -142,11 +142,12 @@ if __name__ == '__main__':
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
-#	First is number of trajectories, second is dimensions you want jade to consider
+
+#	Config settings -- only here if dQAA is called directly from python
 	config = {};
 	config['numOfTraj'] = 1;
 	config['icadim'] = 40;
 	config['pname'] = 'PROTEIN';	#	Edit to fit your protein name
-	config['startRes'] = 0;			# 	All but first
-	config['endRes'] = -2;			#	All but last
+	config['startRes'] = 0;			# 	excludes first
+	config['endRes'] = -2;			#	excludes last
 	qaa(config, values);
