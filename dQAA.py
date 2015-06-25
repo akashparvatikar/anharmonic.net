@@ -36,7 +36,7 @@ def qaa(num_traj, ica_dim, val):
 		
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("./traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "./traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("wqaa/traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "wqaa/traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
 		except:
 			print "You must edit \'dQAA.py\' to fit your trajectory format!";
 			exit();
