@@ -67,7 +67,7 @@ def qaa(config, val):
 	if val.debug: print 'len: ', len(newCoords)
 	
 	#	Reshaping of coords
-	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat[.shape[0]));
+	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	fulldat.reshape((fulldat.shape[0],-1), order='F').T
 	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
