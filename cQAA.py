@@ -22,14 +22,16 @@ def mmap_concat(a,b):
 #	Main Code
 def qaa(config, val):
 	iterAlign = IterativeMeansAlign();
-	itr = []; avgCoords = []; eRMSD = []; newCoords = [];
+	itr = []; avgCoords = []; eRMSD = [];
 	start_traj = config['startTraj'];
 	num_traj = config['numOfTraj'];
 	dim = 3;
+	startRes = config['startRes'];
+	endRes = config['endRes'];
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("../wqaa/traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "../wqaa/traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
 		except:
 			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
 			exit();
@@ -45,7 +47,7 @@ def qaa(config, val):
 			cacoords.append(f.T);
 			frames.append(ts.frame);
 
-		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords[:,:,config['startRes']:config['endRes']]), 0.150, 4);
+		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:endRes], 0.150, 4);
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
@@ -55,20 +57,18 @@ def qaa(config, val):
 		else: fulldat = mmap_concat(fulldat, d);
 
 	#	Final averaging
-	num_coords = newCoords[0].shape[0];
-	dim = newCoords[0].shape[1];
-	num_atoms = newCoords[0].shape[2];
+	num_coords = fulldat.shape[0];
+	dim = fulldat.shape[1];
+	num_atoms = fulldat.shape[2];
 	if val.debug: print 'num_coords: ', num_coords;
 	if num_traj > 1:
-		[itr, avgCoords, eRMSD, newCoords] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
+		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
 	
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.debug: print 'newC shape: ', newCoords.shape;
-	if val.debug: print 'len: ', len(newCoords)
-	
+
 	#	Reshaping of coords
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
-	fulldat.reshape((fulldat.shape[0],-1), order='F').T
+	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
@@ -142,11 +142,18 @@ def qaa(config, val):
 		plt.show();
 	
 	if val.setup:
+		print fulldat.shape;
+		[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
+		si = numpy.argsort(-pcas.ravel());
+		pcaTmp = pcas;
+		pcas = numpy.diag(pcas);
+		pcab = pcab[:,si];
+		
 		fig = plt.figure();
 		ax = fig.add_subplot(111);
 		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
 		ax.plot(y);
-		print 'Cumulative sum of spectrum of covariance matrix:';
+		if val.verbose: print('Cov. Matrix spectrum cum. sum.');
 		plt.show();
 		
 	if val.debug and val.save:
@@ -157,14 +164,15 @@ def qaa(config, val):
 	lastEig = subspace; # number of eigen-modes to be considered
 	numOfIC = subspace; # number of independent components to be resolved
 	
+	#	Performs jade and saves if main
 	icajade = jadeR(coords, lastEig);
 	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
-
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
+
+	#	Performs change of basis
 	icacoffs = icajade.dot(coords)
 	icacoffs = numpy.asarray(icacoffs);
 	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
-
 	if (val.save) and __name__ == '__main__': np.save('icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
 	
 	if val.graph:	
@@ -174,16 +182,20 @@ def qaa(config, val):
 		print 'First 3 Dimensions of Icacoffs';
 		plt.show();
 
+	#	Saves array's to a dict and returns
 	icamat = {};
 	icamat['icajade'] = icajade;
 	icamat['icacoffs'] = icacoffs;
 	return icamat;
+
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
 	parser.add_argument('-v', action='store_true', dest='verbose', default=False, help='Runs program verbosely.')
 	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
 	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
+	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
@@ -194,4 +206,6 @@ if __name__ == '__main__':
 	config['startTraj'] = 0;
 	config['icadim'] = 40;
 	config['pname'] = 'ubq_native1';	#	Edit to fit your protein name
+	config['startRes'] = 0;
+	config['endRes']=-1;
 	qaa(config, values);

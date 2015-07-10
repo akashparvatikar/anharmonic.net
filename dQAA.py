@@ -87,7 +87,7 @@ def qaa(config, val):
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
-	if val.graph:
+	if val.setup:
 		#	Cumulative Variance to determine JADE subspace
 		[pcas,pcab] = numpy.linalg.eig(numpy.cov(fulldat));
 		si = numpy.argsort(-pcas.ravel());
@@ -99,6 +99,7 @@ def qaa(config, val):
 		ax = fig.add_subplot(111);
 		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
 		ax.plot(y);
+		if val.verbose: print('Cov. Matrix spectrum cumulative sum');
 		plt.show();
 
 	#	some set up for running JADE
@@ -107,6 +108,7 @@ def qaa(config, val):
 	subspace = ica_dim;
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
+	
 	#	Runs jade
 	if val.verbose: timing.log('Beginning JADE...');	
 	icajade = jadeR(fulldat, lastEig);
@@ -128,6 +130,7 @@ def qaa(config, val):
 		print 'First 3-Dimensions of \'icacoffs\'';
 		plt.show();
 	
+	#	Saves arrays to a dict and returns
 	icamat = {};
 	icamat['icajade'] = icajade;
 	icamat['icacoffs'] = icacoffs;
@@ -139,6 +142,7 @@ if __name__ == '__main__':
 	parser.add_argument('-v', action='store_true', dest='verbose', default=False, help='Runs program verbosely.')
 	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
 	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
+	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
