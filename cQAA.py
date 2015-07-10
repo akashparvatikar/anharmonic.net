@@ -10,12 +10,13 @@ from MDAnalysis import *
 from numpy import *
 from jade import *
 import timing
+import argparse
 
-#a is mem-mapped array, b is array in RAM we are adding to a. Not used currently in cQAA 
+#a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(a,b):
 	assert(a.shape[0] == b.shape[0]);
-	c = np.memmap('dihedral_data.array', dtype='float64', mode='r+', shape=(a.shape[0],a.shape[1]+b.shape[1]), order='F')
-	c[:, a.shape[1]: ] = b
+	c = np.memmap('coord_data.array', dtype='float64', mode='r+', shape=(a.shape[0],a.shape[1],a.shape[2]+b.shape[2]), order='F')
+	c[:, :, a.shape[2]: ] = b
 	return c
 
 #	Main Code
@@ -24,8 +25,15 @@ def qaa(config, val):
 	itr = []; avgCoords = []; eRMSD = []; newCoords = [];
 	start_traj = config['startTraj'];
 	num_traj = config['numOfTraj'];
+	dim = 3;
 	for i in range(start_traj,num_traj):
-		u = MDAnalysis.Universe("traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+		#	!Edit to your trajectory format!
+		try:
+			u = MDAnalysis.Universe("../wqaa/traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "../wqaa/traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+		except:
+			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
+			exit();
+
 		atom = u.selectAtoms('name CA');
 
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
@@ -36,26 +44,31 @@ def qaa(config, val):
 			f = atom.coordinates();
 			cacoords.append(f.T);
 			frames.append(ts.frame);
-		
-		print array(cacoords).shape
 
-		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords), 0.150, 4);
+		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords[:,:,config['startRes']:config['endRes']]), 0.150, 4);
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
-		newCoords.append(d);
-	
-	print array(newCoords).shape
+		if ( i == start_traj):
+			fulldat = np.memmap('coord_data.array', dtype='float64', mode='w+', shape=(d.shape[0], d.shape[1], d.shape[2]));
+			fulldat[:,:,:] = d;
+		else: fulldat = mmap_concat(fulldat, d);
 
 	#	Final averaging
-	[itr, avgCoords, eRMSD, newCoords] = iterAlign.iterativeMeans(array(newCoords).reshape(-1,3,newCoords[0].shape[2]), 0.001, 4);
+	num_coords = newCoords[0].shape[0];
+	dim = newCoords[0].shape[1];
+	num_atoms = newCoords[0].shape[2];
+	if val.debug: print 'num_coords: ', num_coords;
+	if num_traj > 1:
+		[itr, avgCoords, eRMSD, newCoords] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
 	
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
 	if val.debug: print 'newC shape: ', newCoords.shape;
 	if val.debug: print 'len: ', len(newCoords)
 	
 	#	Reshaping of coords
-	coords = numpy.reshape(newCoords, (len(newCoords), -1)).T;
+	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat[.shape[0]));
+	fulldat.reshape((fulldat.shape[0],-1), order='F').T
 	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
@@ -95,12 +108,11 @@ def qaa(config, val):
 		print 'Kurtosis: ', gK;
 		
 		cc = coords[:,0]; print numpy.shape(cc);
-		cc = numpy.reshape(cc, (dim,Na));
 		#print numpy.shape(coords[0:-1:3,0]), numpy.shape(coords[1:-1:3,0]), numpy.shape(coords[2:-1:3,0]);
 		
 		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
-		ax.plot(cc[0,:], cc[1,:], cc[2,:]);
+		ax.plot(cc[::dim], cc[1::dim], cc[2::dim]);
 		print 'fig2'
 		plt.show();
 		
@@ -122,39 +134,38 @@ def qaa(config, val):
 		#plt.show();
 		
 		fig = plt.figure();
-		ax = fig.add_subplot(111);
-		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
-		ax.plot(y);
-		print 'fig3';
-		plt.show();
-		
-		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
 		pcacoffs = numpy.dot(pcab.conj().T, caDevsMD);
 		print numpy.shape(pcacoffs);
 		ax.scatter(pcacoffs[0,:], pcacoffs[1,:], pcacoffs[2,:], marker='o', c=[0.6,0.6,0.6]);
 		print 'fig4';
 		plt.show();
+	
+	if val.setup:
+		fig = plt.figure();
+		ax = fig.add_subplot(111);
+		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
+		ax.plot(y);
+		print 'Cumulative sum of spectrum of covariance matrix:';
+		plt.show();
 		
-		
+	if val.debug and val.save:
+		np.save('coords_%s.npy' %(config['pname']) , coords);	
+
 	# some set up for running JADE
 	subspace = config['icadim'];
 	lastEig = subspace; # number of eigen-modes to be considered
 	numOfIC = subspace; # number of independent components to be resolved
 	
-	if val.graph:
-		plt.plot(range(trajlen),rad_gyr[:], 'r--', lw=2)
-		plt.show()
-	
 	icajade = jadeR(coords, lastEig);
-	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
-	icacoffs = icajade.dot(fulldat)
+	icacoffs = icajade.dot(coords)
 	icacoffs = numpy.asarray(icacoffs);
 	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
 
-	if (val.save) and __name__ == '__main__': np.save('icacoffs%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
+	if (val.save) and __name__ == '__main__': np.save('icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
 	
 	if val.graph:	
 		fig = plt.figure();
@@ -163,6 +174,10 @@ def qaa(config, val):
 		print 'First 3 Dimensions of Icacoffs';
 		plt.show();
 
+	icamat = {};
+	icamat['icajade'] = icajade;
+	icamat['icacoffs'] = icacoffs;
+	return icamat;
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
@@ -176,6 +191,7 @@ if __name__ == '__main__':
 #	Config settings -- only here if cQAA is called directly from python
 	config = {};
 	config['numOfTraj'] = 1;
+	config['startTraj'] = 0;
 	config['icadim'] = 40;
-	config['pname'] = 'PROTEIN';	#	Edit to fit your protein name
+	config['pname'] = 'ubq_native1';	#	Edit to fit your protein name
 	qaa(config, values);

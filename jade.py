@@ -309,7 +309,7 @@ def jadeR(X, m=None, verbose=True):
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
-    #np.save('pyica.npy', B);  # Debugging help -- Gabe V
+    np.save('pyica.npy', B);  # Debugging help -- Gabe V
     return B.astype(origtype)
     
     
@@ -436,9 +436,9 @@ def jadeR(X, m=None, verbose=True):
     # Note 2) A test module that compares NumPy output with Octave (MATLAB
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
-	"""	
-	a = io.loadmat('awq_coords.mat');
-	mat = a['COORDS'];
-	jadeR(mat, m=60);
+		
+	a = io.loadmat('ubq_coords.mat');
+	mat = a['coords'];
+	jadeR(mat, m=40);
 	#modify to your coordinate file if interested
-	"""
+	
