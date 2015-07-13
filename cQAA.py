@@ -152,10 +152,16 @@ def qaa(config, val):
 		fig = plt.figure();
 		ax = fig.add_subplot(111);
 		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
-		ax.plot(y);
+		ax.plot(y*100);
+		ax.set_xlabel('Number of Principal Components');
+		ax.set_ylabel('Percent of Total Variance Preserved');
+		ax.set_title('Variance of Principal Components');
 		if val.verbose: print('Cov. Matrix spectrum cum. sum.');
 		plt.show();
-		
+		a = input('Enter desired ICA dimension (enter -1 for default): ');
+		if (a > 0):
+			config['icadim'] = a;
+	
 	if val.debug and val.save:
 		np.save('coords_%s.npy' %(config['pname']) , coords);	
 

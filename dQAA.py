@@ -101,6 +101,9 @@ def qaa(config, val):
 		ax.plot(y);
 		if val.verbose: print('Cov. Matrix spectrum cumulative sum');
 		plt.show();
+		a = input('Enter desired ICA dimension (enter -1 for default): ');
+		if (a > 0):
+			config['icadim'] = a;
 
 	#	some set up for running JADE
 	if val.debug: print 'fulldat: ', fulldat.shape
