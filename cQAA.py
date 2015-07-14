@@ -27,7 +27,7 @@ def qaa(config, val):
 	num_traj = config['numOfTraj'];
 	dim = 3;
 	startRes = config['startRes'];
-	endRes = config['endRes'];
+	numRes = config['numRes'];
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
@@ -41,13 +41,18 @@ def qaa(config, val):
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
 
 		cacoords = []; frames = [];
-		print atom.numberOfResidues();
 		for ts in u.trajectory:
 			f = atom.coordinates();
 			cacoords.append(f.T);
 			frames.append(ts.frame);
+		
+		if numRes == -1:
+			numRes = atom.numberOfResidues();
 
-		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:endRes], 0.150, 4);
+		if atom.numberOfResidues() == numRes:
+			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4);
+		else:
+			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4);				
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
@@ -213,5 +218,5 @@ if __name__ == '__main__':
 	config['icadim'] = 40;
 	config['pname'] = 'ubq_native1';	#	Edit to fit your protein name
 	config['startRes'] = 0;
-	config['endRes']=-1;
+	config['numRes']=-1;
 	qaa(config, values);
