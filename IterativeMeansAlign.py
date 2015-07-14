@@ -49,7 +49,7 @@ class IterativeMeansAlign(object):
 			eRMSD.append(numpy.array(tmpRMSD).T);
 			newMnC = numpy.mean(coords,0); 
 			err = math.sqrt(sum( (mnC.flatten()-newMnC.flatten())**2) )
-			if val.verbose: print("Iteration #%i with an error of %f" %(itr, err))
+			if (verbose): print("Iteration #%i with an error of %f" %(itr, err))
 			if err <= eps or itr == maxIter:
 				ok = 1;
 			itr = itr + 1;
