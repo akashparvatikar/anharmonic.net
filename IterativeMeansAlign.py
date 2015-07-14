@@ -20,9 +20,12 @@ class IterativeMeansAlign(object):
 	
 		# This file has been edited to produce identical results as the original matlab implementation.
 
-		Ns = numpy.shape(coords)[0]; if verbose: print Ns; 
-		dim = numpy.shape(coords)[1]; if verbose: print dim;
-		Na = numpy.shape(coords)[2]; if verbose: print Na;
+		Ns = numpy.shape(coords)[0];
+		if (verbose): print Ns; 
+		dim = numpy.shape(coords)[1];
+		if (verbose): print dim;
+		Na = numpy.shape(coords)[2];
+		if (verbose): print Na;
 		
 		avgCoords = [];			# track average coordinates
 		kalign = KabschAlign();		# initialize for use
