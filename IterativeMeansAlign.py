@@ -14,15 +14,15 @@ class IterativeMeansAlign(object):
 		Constructor
 		"""
 
-	def iterativeMeans(self, coords, eps, maxIter):
+	def iterativeMeans(self, coords, eps, maxIter, verbose):
 		# all coordinates are expected to be passed as a (Ns x 3 x Na)  array
 		# where Na = number of atoms; Ns = number of snapshots
 	
 		# This file has been edited to produce identical results as the original matlab implementation.
 
-		Ns = numpy.shape(coords)[0]; print Ns; 
-		dim = numpy.shape(coords)[1]; print dim;
-		Na = numpy.shape(coords)[2]; print Na;
+		Ns = numpy.shape(coords)[0]; if verbose: print Ns; 
+		dim = numpy.shape(coords)[1]; if verbose: print dim;
+		Na = numpy.shape(coords)[2]; if verbose: print Na;
 		
 		avgCoords = [];			# track average coordinates
 		kalign = KabschAlign();		# initialize for use
@@ -46,7 +46,7 @@ class IterativeMeansAlign(object):
 			eRMSD.append(numpy.array(tmpRMSD).T);
 			newMnC = numpy.mean(coords,0); 
 			err = math.sqrt(sum( (mnC.flatten()-newMnC.flatten())**2) )
-			print itr, err
+			if val.verbose: print("Iteration #%i with an error of %f" %(itr, err))
 			if err <= eps or itr == maxIter:
 				ok = 1;
 			itr = itr + 1;
@@ -63,7 +63,7 @@ if __name__=='__main__':
 	print numpy.shape(cacoords);
 	
 	iterAlign = IterativeMeansAlign();
-	[itr, avgCoords, eRMSD, newCoords] = iterAlign.iterativeMeans(cacoords, 0.001, 4); 
+	[itr, avgCoords, eRMSD, newCoords] = iterAlign.iterativeMeans(cacoords, 0.001, 4, True); 
 	
 	print numpy.shape(eRMSD);
 	newCoords = numpy.array(newCoords);

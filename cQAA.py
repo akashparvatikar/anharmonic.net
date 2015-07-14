@@ -50,9 +50,9 @@ def qaa(config, val):
 			numRes = atom.numberOfResidues();
 
 		if atom.numberOfResidues() == numRes:
-			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4);
+			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4, val.verbose);
 		else:
-			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4);				
+			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4, val.verbose);				
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
@@ -67,7 +67,7 @@ def qaa(config, val):
 	num_atoms = fulldat.shape[2];
 	if val.debug: print 'num_coords: ', num_coords;
 	if num_traj > 1:
-		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
+		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 	
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
 
@@ -109,8 +109,8 @@ def qaa(config, val):
 	
 	
 		#print 'Mean: ', gm;
-		print 'Std. dev: ', gs;
-		print 'Kurtosis: ', gK;
+		if val.verbose: print 'Std. dev: ', gs;
+		if val.verbose: print 'Kurtosis: ', gK;
 		
 		cc = coords[:,0]; print numpy.shape(cc);
 		#print numpy.shape(coords[0:-1:3,0]), numpy.shape(coords[1:-1:3,0]), numpy.shape(coords[2:-1:3,0]);
@@ -121,12 +121,12 @@ def qaa(config, val):
 		print 'fig2'
 		plt.show();
 		
-		print numpy.shape(numpy.cov(coords));
+		if val.debug: print numpy.shape(numpy.cov(coords));
 		numpy.save('cov_ca.npy', numpy.cov(coords));
 		[pcas,pcab] = numpy.linalg.eigh(numpy.cov(coords));
 		#numpy.save('pcab_ca.npy', pcab);
-		print pcas.shape, pcab.shape
-		print 'pcas: ', pcas
+		if val.debug: print pcas.shape, pcab.shape
+		if val.verbose: print 'pcas: ', pcas
 		si = numpy.argsort(-pcas.ravel()); print si;
 		pcaTmp = pcas;
 		pcas = numpy.diag(pcas);
@@ -141,7 +141,7 @@ def qaa(config, val):
 		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
 		pcacoffs = numpy.dot(pcab.conj().T, caDevsMD);
-		print numpy.shape(pcacoffs);
+		if val.debug: print numpy.shape(pcacoffs);
 		ax.scatter(pcacoffs[0,:], pcacoffs[1,:], pcacoffs[2,:], marker='o', c=[0.6,0.6,0.6]);
 		print 'fig4';
 		plt.show();
