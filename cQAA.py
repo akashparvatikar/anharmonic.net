@@ -14,7 +14,7 @@ import argparse
 
 #a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(a,b):
-	assert(a.shape[0] == b.shape[0]);
+	assert(a.shape[1] == b.shape[1] and a.shape[2] == b.shape[2]);
 	c = np.memmap('coord_data.array', dtype='float64', mode='r+', shape=(a.shape[0]+b.shape[0],a.shape[1],a.shape[2]), order='F')
 	c[a.shape[0]:, :, : ] = b
 	return c
