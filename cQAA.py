@@ -39,12 +39,14 @@ def qaa(config, val):
 		atom = u.selectAtoms('name CA');
 
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
-
+		counter = 0;
 		cacoords = []; frames = [];
 		for ts in u.trajectory:
-			f = atom.coordinates();
-			cacoords.append(f.T);
-			frames.append(ts.frame);
+			if (counter % config['slice_val'] == 0):
+				f = atom.coordinates();
+				cacoords.append(f.T);
+				frames.append(ts.frame);
+			counter = counter + 1;
 		
 		if numRes == -1:
 			numRes = atom.numberOfResidues();
