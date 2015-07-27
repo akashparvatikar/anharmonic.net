@@ -76,7 +76,7 @@ def qaa(config, val):
 		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.r and val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
+	if val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
 
 	#	Reshaping of coords
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
@@ -99,7 +99,7 @@ def minqaa(config, val, fulldat):
 	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 	
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.debug and val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
+	if val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
