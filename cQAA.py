@@ -19,7 +19,11 @@ def mmap_concat(a,b):
 	c[a.shape[0]:, :, : ] = b
 	return c
 
-#	Main Code
+#	Main  Code
+#	||		||
+#	\/		\/
+
+#================================================
 def qaa(config, val):
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = [];
@@ -31,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("hivp/hivp.pdb", "hivp/hivp_%i.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
 		except:
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
@@ -70,13 +74,40 @@ def qaa(config, val):
 	if val.debug: print 'num_coords: ', num_coords;
 	if num_traj > 1:
 		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
-	
+
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
+	if val.r and val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
 
 	#	Reshaping of coords
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
+
+	jade_calc(coords, avgCoords, num_coords);
+
+#================================================
+def minqaa(config, val, fulldat):
+	iterAlign = IterativeMeansAlign();
+	itr = []; avgCoords = []; eRMSD = [];
+	dim = 3;
+
+	#	Final averaging
+	assert(len(fulldat.shape) == 3);
+	num_coords = fulldat.shape[0];
+	dim = fulldat.shape[1];
+	num_atoms = fulldat.shape[2];
+
+	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 	
+	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
+	if val.debug and val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
+	#	Reshaping of coords
+	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
+
+	jade_calc(coords, avgCoords, num_coords);
+
+#================================================
+def jade_calc(coords, avgCoords, num_coords):
+
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
 	avgCoords = numpy.mean(coords, 1); 
@@ -149,7 +180,6 @@ def qaa(config, val):
 		plt.show();
 	
 	if val.setup:
-		print fulldat.shape;
 		[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
 		si = numpy.argsort(-pcas.ravel());
 		pcaTmp = pcas;
@@ -201,7 +231,7 @@ def qaa(config, val):
 	icamat['icacoffs'] = icacoffs;
 	return icamat;
 
-
+#================================================
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
@@ -209,6 +239,7 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
 	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
 	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
+	parser.add_argument('-i', '--input', type=str, dest='coord_in', default='null', help='Allows direct inclusion of an array of coordinates. Input as [numRes, 3, numSamp].')
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
@@ -218,8 +249,12 @@ if __name__ == '__main__':
 	config['numOfTraj'] = 1;
 	config['startTraj'] = 0;
 	config['icadim'] = 40;
-	config['pname'] = 'ubq_native1';	#	Edit to fit your protein name
+	config['pname'] = 'pname';	#	Edit to fit your protein name
 	config['startRes'] = 0;
 	config['numRes']=-1;
 	config['slice_val'] = 1;
-	qaa(config, values);
+	if (values.coord_in == 'null'):
+		qaa(config, values);
+	else:
+		minqaa(config, values, np.load(values.coord_in)); 
+
