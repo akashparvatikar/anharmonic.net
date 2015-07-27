@@ -209,7 +209,7 @@ def jade_calc(coords, val, avgCoords, num_coords):
 	
 	#	Performs jade and saves if main
 	print 'val.smart: ', val.smart;
-	icajade = jadeR(coords, lastEig, val.smart, val.single);
+	icajade = jadeR(coords, lastEig, smart_setup=val.smart, single=val.single);
 	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
 
