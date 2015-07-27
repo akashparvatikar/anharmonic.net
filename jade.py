@@ -43,7 +43,7 @@ import scipy.io as io
 import numpy as np
 
 
-def jadeR(X, m=None, verbose=True):
+def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     """
     Blind separation of real signals with JADE.
     
@@ -114,7 +114,8 @@ def jadeR(X, m=None, verbose=True):
     assert isinstance(X, ndarray),\
         "X (input data matrix) is of the wrong type (%s)" % type(X)
     origtype = X.dtype # remember to return matrix B of the same type
-    X = matrix(X.astype(float64))
+    if single: X = matrix(X.astype('float'));
+    else: X = matrix(X.astype(float64));
     assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
     assert (verbose == True) or (verbose == False), \
         "verbose parameter should be either True or False"
@@ -208,8 +209,17 @@ def jadeR(X, m=None, verbose=True):
             Range = Range + m
 
     # Now we have nbcm = m(m+1)/2 cumulants matrices stored in a big m x m*nbcm array.
-   
-    V = matrix(eye(m, dtype=float64))
+
+    #	Setup for joing diag
+    #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
+    if (smart_setup):
+    	D,V = eig(CM[:,:m]);
+    	for u in range(0, m*nbcm, m):
+    		CM[:,u:u+m-1] = CM[:,u:u+m-1].dot(V) ; 
+    	CM = V.T.dot(CM);
+
+    #	"reg. setup" (supposedly equivalent as above, but not in practice)
+    else: V = matrix(eye(m, dtype=float64));
         
     Diag = zeros(m, dtype=float64)
     On = 0.0
