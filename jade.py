@@ -110,7 +110,6 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # GB: we do some checking of the input arguments and copy data to new
     # variables to avoid messing with the original input. We also require double
     # precision (float64) and a numpy matrix type for X.
-    print 'smart_setup', smart_setup;
     assert isinstance(X, ndarray),\
         "X (input data matrix) is of the wrong type (%s)" % type(X)
     origtype = X.dtype # remember to return matrix B of the same type
@@ -215,9 +214,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     if (smart_setup):
         print "in smart setup"
         D,V = eig(CM[:,:m]);
-        print D.shape, V.shape;
         for u in range(0, m*nbcm, m):
-            print CM.shape, CM[:,u:u+m].shape;
             CM[:,u:u+m] = CM[:,u:u+m].dot(V) ; 
         CM = V.T.dot(CM);
 

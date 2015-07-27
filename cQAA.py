@@ -208,7 +208,6 @@ def jade_calc(coords, val, avgCoords, num_coords):
 	numOfIC = subspace; # number of independent components to be resolved
 	
 	#	Performs jade and saves if main
-	print 'val.smart: ', val.smart;
 	icajade = jadeR(coords, lastEig, smart_setup=val.smart, single=val.single);
 	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
@@ -256,7 +255,6 @@ if __name__ == '__main__':
 	config['startRes'] = 0;
 	config['numRes']=-1;
 	config['slice_val'] = 1;
-	print 'values.smart: ', values.smart;
 	if (values.coord_in == 'null'):
 		qaa(config, values);
 	else:
