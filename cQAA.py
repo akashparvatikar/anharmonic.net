@@ -82,7 +82,7 @@ def qaa(config, val):
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
-	jade_calc(coords, avgCoords, num_coords);
+	jade_calc(coords, val, avgCoords, num_coords);
 
 #================================================
 def minqaa(config, val, fulldat):
@@ -103,10 +103,10 @@ def minqaa(config, val, fulldat):
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
-	jade_calc(coords, avgCoords, num_coords);
+	jade_calc(coords, val, avgCoords, num_coords);
 
 #================================================
-def jade_calc(coords, avgCoords, num_coords):
+def jade_calc(coords, val, avgCoords, num_coords):
 
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
