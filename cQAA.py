@@ -107,7 +107,7 @@ def minqaa(config, val, fulldat):
 
 #================================================
 def jade_calc(coords, val, avgCoords, num_coords):
-
+	dim = 3;
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
 	avgCoords = numpy.mean(coords, 1); 
