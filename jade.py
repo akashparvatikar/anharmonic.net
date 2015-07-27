@@ -212,7 +212,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #	Setup for joing diag
     #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
     if (smart_setup):
-        print "in smart setup"
+        if verbose: print( "Executing \'Smart Setup\'..." );
         D,V = eig(CM[:,:m]);
         for u in range(0, m*nbcm, m):
             CM[:,u:u+m] = CM[:,u:u+m].dot(V) ; 
