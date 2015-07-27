@@ -250,7 +250,7 @@ if __name__ == '__main__':
 	config = {};
 	config['numOfTraj'] = 1;
 	config['startTraj'] = 0;
-	config['icadim'] = 40;
+	config['icadim'] = 60;
 	config['pname'] = 'pname';	#	Edit to fit your protein name
 	config['startRes'] = 0;
 	config['numRes']=-1;

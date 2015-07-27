@@ -214,7 +214,9 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
     if (smart_setup):
     	D,V = eig(CM[:,:m]);
+    	print D.shape, V.shape;
     	for u in range(0, m*nbcm, m):
+    		print CM.shape, CM[:,u:u+m-1].shape;
     		CM[:,u:u+m-1] = CM[:,u:u+m-1].dot(V) ; 
     	CM = V.T.dot(CM);
 
