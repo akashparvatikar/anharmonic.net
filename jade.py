@@ -113,7 +113,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     assert isinstance(X, ndarray),\
         "X (input data matrix) is of the wrong type (%s)" % type(X)
     origtype = X.dtype # remember to return matrix B of the same type
-    if single: X = matrix(X.astype('float'));
+    if single: X = matrix(X.astype('float32'));
     else: X = matrix(X.astype(float64));
     assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
     assert (verbose == True) or (verbose == False), \
@@ -131,7 +131,6 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         print >> stdout, "jade -> Removing the mean value"
     xmean = X.mean(axis = 1).reshape((n,1));
     X = X - xmean.dot( np.ones((1,T)) );
-    assert X.dtype == 'float64';
     #np.save('prewhite.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
