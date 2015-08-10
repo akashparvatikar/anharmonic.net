@@ -24,6 +24,9 @@
 #
 # This file operates with double precision.  Jade with single precision
 # can produce slightly different results. (IC's differ by ~ .0001).
+# 
+# This file standardizes the eigenvectors to vectors with a positive first
+# value, and sorts the by order of increasing corresponding eigenvalue.
 #######################################################################
 
 """
