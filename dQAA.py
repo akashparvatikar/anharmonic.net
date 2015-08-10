@@ -62,7 +62,7 @@ def qaa(config, val):
 			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
-	
+		numres = numres-2;
 		#	Computes along whole trajectory
 		phidat.compute(u.trajectory)
 		psidat.compute(u.trajectory)
