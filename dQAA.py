@@ -58,7 +58,7 @@ def qaa(config, val):
 			phi_sel = phisel(u.residues[res])
 			#	selection of the atoms involved for the psi angle
 			psi_sel = psisel(u.residues[res])
-	
+			print phi_sel.numberOfAtoms();
 			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
