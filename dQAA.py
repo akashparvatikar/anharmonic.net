@@ -53,7 +53,7 @@ def qaa(config, val):
 		trajlen = len(u.trajectory)
 	
 		#	Tailor generateConfig.py for correct for-loop iterations
-		for res in range(1+config['startRes'], config['startRes']+numRes-1):
+		for res in range(1+config['startRes'], config['startRes']+numres-1):
 			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res])
 			#	selection of the atoms involved for the psi angle
