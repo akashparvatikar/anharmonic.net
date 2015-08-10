@@ -35,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj+start_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("kbh/1KBH%i_ww.pdb" %(i+1), "kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("ncbd/2kkj.pdb", "ncbd/2KKJ%02i_1us.dcd" %(i+1), permissive=False);
 		except:
 			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
 			exit();
@@ -49,11 +49,11 @@ def qaa(config, val):
 
 		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
 		if val.verbose: timing.log('Processing Trajectory %i' %(i+1));
-		numres = 0
+		numres = config['numRes']
 		trajlen = len(u.trajectory)
 	
 		#	Tailor generateConfig.py for correct for-loop iterations
-		for res in range(1+config['startRes'], config['startRes']+config['numRes']-1):
+		for res in range(1+config['startRes'], config['startRes']+numRes-1):
 			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res])
 			#	selection of the atoms involved for the psi angle
