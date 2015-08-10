@@ -112,7 +112,7 @@ def qaa(config, val):
 	
 	#	Runs jade
 	if val.verbose: timing.log('Beginning JADE...');	
-	icajade = jadeR(fulldat, lastEig);
+	icajade = jadeR(fulldat, lastEig, verbose=val.verbose, smart_setup=val.smart, single=val.single);
 	if val.verbose: timing.log('Completed JADE...');
 	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
@@ -144,6 +144,8 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
 	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
 	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
+	parser.add_argument('--single', action='store_true', dest='single', default=False, help='Runs jade w/ single precision. NOT recommended.')
+	parser.add_argument('--smart', action='store_true', dest='smart', default=False, help='Runs jade using an alternative diagonalization setup. Refer to Cardoso\'s code for more details.')
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;
