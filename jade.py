@@ -120,7 +120,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         "verbose parameter should be either True or False"
 
     [n,T] = X.shape # GB: n is number of input signals, T is number of samples
-    
+    print X.shape;
     if m==None:
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
@@ -446,8 +446,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
 		
-	a = io.loadmat('ubq_coords.mat');
-	mat = a['coords'];
-	jadeR(mat, m=40);
+	a = np.load('rand.npy');
+	jadeR(a, m=20, smart_setup=True);
 	#modify to your coordinate file if interested
 	
