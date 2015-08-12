@@ -143,7 +143,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         print >> stdout, "jade -> Removing the mean value"
     xmean = X.mean(axis = 1).reshape((n,1));
     X = X - xmean.dot( np.ones((1,T)) );
-    #np.save('zeromean.npy', X);  # Debugging help -- Gabe V
+    np.save('zeromean.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
     if verbose:
@@ -166,7 +166,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #np.save('eigv.npy', U);  # Debugging help -- Gabe V
     #np.save('eigval.npy', D);  # Debugging help -- Gabe V
     #np.save('whitener.npy', B);  # Debugging help -- Gabe V
-    #np.save('whitened.npy', X);  # Debugging help -- Gabe V
+    np.save('whitened.npy', X);  # Debugging help -- Gabe V
 
     del U, D, Ds, k, PCs, scales 
     
@@ -218,7 +218,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
             CM[:,Range]	= np.sqrt(2) * Qij
             Range = Range + m
 
-	#np.save('cm.npy', CM);
+	np.save('cm.npy', CM);
     # Now we have nbcm = m(m+1)/2 cumulants matrices stored in a big m x m*nbcm array.
 
     #	Setup for joing diag
@@ -231,7 +231,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         for u in range(0, m*nbcm, m):
             CM[:,u:u+m] = CM[:,u:u+m].dot(V) ; 
         CM = V.T.dot(CM);
-	#np.save('post_setup.npy', CM);
+	np.save('post_setup.npy', CM);
     #	"reg. setup" (supposedly equivalent as above, but not in practice)
     else: V = matrix(eye(m, dtype=float64));
         
@@ -331,7 +331,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
-    #np.save('pyica.npy', B);  # Debugging help -- Gabe V
+    np.save('pyica.npy', B);  # Debugging help -- Gabe V
     return B.astype(origtype)
     
     
@@ -459,7 +459,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
 		
-	a = np.load('rand.npy');
-	jadeR(a, m=20, smart_setup=True);
+	a = np.load('coords_awq.npy');
+	jadeR(a, m=60, smart_setup=True);
 	#modify to your coordinate file if interested
 	

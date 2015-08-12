@@ -107,7 +107,19 @@ def minqaa(config, val, fulldat):
 
 #================================================
 def jade_calc(coords, val, avgCoords, num_coords):
+
 	dim = 3;
+	numres = coords.shape[0]/dim;
+	#	Stats to determine % of time exhibiting anharmonicity
+	anharm = np.zeros((3,numres));
+	for i in range(3):
+		for j in range(numres):
+			tmp = ((coords[i::3,:])[j])
+			median = np.median(tmp);
+			stddev = np.std(tmp);
+			anharm[i,j] = np.sum( (np.abs(tmp - median) > 2*stddev) ).astype('float64') / num_coords.astype('float64');
+	if val.save: np.save('savefiles/res_anharm_%s.npy' %(config['pname']) );
+	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
 	avgCoords = numpy.mean(coords, 1); 
