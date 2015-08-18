@@ -105,7 +105,7 @@ def qaa(config, val):
 	anharm = np.zeros((2,numres));
 	for i in range(2):
 		for j in range(numres):
-			tmp = ((fulldat[i::3,:])[j])
+			tmp = ((fulldat[i::2,:])[j])
 			median = np.median(tmp);
 			stddev = np.std(tmp);
 			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / fulldat.shape[1];
