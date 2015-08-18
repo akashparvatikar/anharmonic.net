@@ -118,7 +118,7 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 			median = np.median(tmp);
 			stddev = np.std(tmp);
 			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / num_coords;
-	if val.save: np.save('savefiles/res_anharm_%s.npy' %(config['pname']), anharm );
+	if val.save: np.save('savefiles/coord_anharm_%s.npy' %(config['pname']), anharm );
 	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	

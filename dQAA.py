@@ -73,15 +73,13 @@ def qaa(config, val):
 		psidat =  array(psidat)
 		psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
 		
-		dihedral_dat = np.zeros((numres*4,trajlen))
+		dihedral_dat = np.zeros((numres*2,trajlen))
 		#	Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
-		dihedral_dat[0::4,:] = np.sin(phidat)
-		dihedral_dat[1::4,:] = np.cos(phidat)
-		dihedral_dat[2::4,:] = np.sin(psidat)
-		dihedral_dat[3::4,:] = np.cos(psidat)
+		dihedral_dat[0::2,:] = phidat
+		dihedral_dat[1::2,:] = phidat
 		
 		if i == start_traj:
-			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*4, trajlen))
+			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*2, trajlen))
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
@@ -103,16 +101,34 @@ def qaa(config, val):
 		if (a > 0):
 			config['icadim'] = a;
 
+	#	determining % time exhibiting anharmonicity
+	anharm = np.zeros((2,numres));
+	for i in range(2):
+		for j in range(numres):
+			tmp = ((fulldat[i::3,:])[j])
+			median = np.median(tmp);
+			stddev = np.std(tmp);
+			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / num_coords;
+
+	if val.save: np.save('savefiles/dih_anharm_%s.npy' %(config['pname']), anharm );
+
 	#	some set up for running JADE
 	if val.debug: print 'fulldat: ', fulldat.shape
 	Ncyc  = 1;
 	subspace = ica_dim;
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
-	
+
+	#	turning data into trig form
+	trigdat = np.memmap('trigdat.array', dtype='float64', mode='w+', shape=(numres*4, fulldat.shape[1]));
+	trigdat[0::4, :] = np.sin(fulldat[0::2, :]);
+	trigdat[1::4, :] = np.cos(fulldat[0::2, :]);
+	trigdat[2::4, :] = np.sin(fulldat[1::2, :]);	
+	trigdat[3::4, :] = np.cos(fulldat[1::2, :]);
+
 	#	Runs jade
 	if val.verbose: timing.log('Beginning JADE...');	
-	icajade = jadeR(fulldat, lastEig, verbose=val.verbose, smart_setup=val.smart, single=val.single);
+	icajade = jadeR(trigdat, lastEig, verbose=val.verbose, smart_setup=val.smart, single=val.single);
 	if val.verbose: timing.log('Completed JADE...');
 	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
