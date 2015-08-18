@@ -108,7 +108,7 @@ def qaa(config, val):
 			tmp = ((fulldat[i::3,:])[j])
 			median = np.median(tmp);
 			stddev = np.std(tmp);
-			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / num_coords;
+			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / fulldat.shape[1];
 
 	if val.save: np.save('savefiles/dih_anharm_%s.npy' %(config['pname']), anharm );
 
