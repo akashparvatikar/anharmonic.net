@@ -35,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj+start_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("../wqaa/traj-format_kbh/1KBH%i_ww.pdb" %(i+1), "../wqaa/traj-format_kbh/1KBH_%i_50k.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("ncbd/2kkj.pdb", "ncbd/2KKJ%02i_1us.dcd" %(i+1), permissive=False);
 		except:
 			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
 			exit();
@@ -49,20 +49,20 @@ def qaa(config, val):
 
 		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
 		if val.verbose: timing.log('Processing Trajectory %i' %(i+1));
-		numres = 0
+		numres = config['numRes']
 		trajlen = len(u.trajectory)
 	
 		#	Tailor generateConfig.py for correct for-loop iterations
-		for res in range(1+config['startRes'], config['startRes']+config['numRes']-1):
+		for res in range(1+config['startRes'], config['startRes']+numres-1):
 			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res])
 			#	selection of the atoms involved for the psi angle
 			psi_sel = psisel(u.residues[res])
-	
+
 			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
-	
+		numres = numres-2;
 		#	Computes along whole trajectory
 		phidat.compute(u.trajectory)
 		psidat.compute(u.trajectory)
@@ -73,15 +73,13 @@ def qaa(config, val):
 		psidat =  array(psidat)
 		psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
 		
-		dihedral_dat = np.zeros((numres*4,trajlen))
+		dihedral_dat = np.zeros((numres*2,trajlen))
 		#	Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
-		dihedral_dat[0::4,:] = np.sin(phidat)
-		dihedral_dat[1::4,:] = np.cos(phidat)
-		dihedral_dat[2::4,:] = np.sin(psidat)
-		dihedral_dat[3::4,:] = np.cos(psidat)
+		dihedral_dat[0::2,:] = phidat
+		dihedral_dat[1::2,:] = phidat
 		
 		if i == start_traj:
-			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*4, trajlen))
+			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*2, trajlen))
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
@@ -103,16 +101,34 @@ def qaa(config, val):
 		if (a > 0):
 			config['icadim'] = a;
 
+	#	determining % time exhibiting anharmonicity
+	anharm = np.zeros((2,numres));
+	for i in range(2):
+		for j in range(numres):
+			tmp = ((fulldat[i::2,:])[j])
+			median = np.median(tmp);
+			stddev = np.std(tmp);
+			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / fulldat.shape[1];
+
+	if val.save: np.save('savefiles/dih_anharm_%s.npy' %(config['pname']), anharm );
+
 	#	some set up for running JADE
 	if val.debug: print 'fulldat: ', fulldat.shape
 	Ncyc  = 1;
 	subspace = ica_dim;
 	lastEig = subspace; #	number of eigen-modes to be considered
 	numOfIC = subspace; #	number of independent components to be resolved
-	
+
+	#	turning data into trig form
+	trigdat = np.memmap('trigdat.array', dtype='float64', mode='w+', shape=(numres*4, fulldat.shape[1]));
+	trigdat[0::4, :] = np.sin(fulldat[0::2, :]);
+	trigdat[1::4, :] = np.cos(fulldat[0::2, :]);
+	trigdat[2::4, :] = np.sin(fulldat[1::2, :]);	
+	trigdat[3::4, :] = np.cos(fulldat[1::2, :]);
+
 	#	Runs jade
 	if val.verbose: timing.log('Beginning JADE...');	
-	icajade = jadeR(fulldat, lastEig);
+	icajade = jadeR(trigdat, lastEig, verbose=val.verbose, smart_setup=val.smart, single=val.single);
 	if val.verbose: timing.log('Completed JADE...');
 	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
@@ -144,6 +160,8 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
 	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
 	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
+	parser.add_argument('--single', action='store_true', dest='single', default=False, help='Runs jade w/ single precision. NOT recommended.')
+	parser.add_argument('--smart', action='store_true', dest='smart', default=False, help='Runs jade using an alternative diagonalization setup. Refer to Cardoso\'s code for more details.')
 
 	values = parser.parse_args()
 	if values.debug: values.verbose = True;

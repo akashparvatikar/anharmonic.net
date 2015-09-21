@@ -37,11 +37,23 @@ future.
 from sys import stdout 
 from numpy import abs, append, arange, arctan2, argsort, array, concatenate, \
     cos, diag, dot, eye, float32, float64, matrix, multiply, ndarray, newaxis, \
-    sign, sin, sqrt, zeros, save
+    sign, sin, sqrt, zeros, save, diagflat
 from numpy.linalg import eig, pinv
 import scipy.io as io
 import numpy as np
 
+def get_eigv(X):
+	D, V = eig(X);
+	print V.shape
+	signs = array(sign(V[0,:]));
+	print signs.shape
+	signs = diagflat(signs);
+	print signs.shape
+	V = V.dot(signs);
+	keys = argsort(D);
+	D = D[keys];
+	V = V[:,keys];
+	return D, V;
 
 def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     """
@@ -110,18 +122,17 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # GB: we do some checking of the input arguments and copy data to new
     # variables to avoid messing with the original input. We also require double
     # precision (float64) and a numpy matrix type for X.
-    print 'smart_setup', smart_setup;
     assert isinstance(X, ndarray),\
         "X (input data matrix) is of the wrong type (%s)" % type(X)
     origtype = X.dtype # remember to return matrix B of the same type
-    if single: X = matrix(X.astype('float'));
+    if single: X = matrix(X.astype('float32'));
     else: X = matrix(X.astype(float64));
     assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
     assert (verbose == True) or (verbose == False), \
         "verbose parameter should be either True or False"
 
     [n,T] = X.shape # GB: n is number of input signals, T is number of samples
-    
+    print X.shape;
     if m==None:
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
@@ -132,13 +143,12 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         print >> stdout, "jade -> Removing the mean value"
     xmean = X.mean(axis = 1).reshape((n,1));
     X = X - xmean.dot( np.ones((1,T)) );
-    assert X.dtype == 'float64';
-    #np.save('prewhite.npy', X);  # Debugging help -- Gabe V
+    np.save('zeromean.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
     if verbose:
         print >> stdout, "jade -> Whitening the data"
-    [D,U] = eig((X * X.T) / float(T)) # An eigen basis for the sample covariance matrix
+    [D,U] = get_eigv((X * X.T) / float(T)) # An eigen basis for the sample covariance matrix
     k = D.argsort()
     Ds = D[k] # Sort by increasing variances
     PCs = arange(n-m, n)    # The m most significant princip. comp. by *increasing* variance
@@ -156,7 +166,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #np.save('eigv.npy', U);  # Debugging help -- Gabe V
     #np.save('eigval.npy', D);  # Debugging help -- Gabe V
     #np.save('whitener.npy', B);  # Debugging help -- Gabe V
-    #np.save('whitened.npy', X);  # Debugging help -- Gabe V
+    np.save('whitened.npy', X);  # Debugging help -- Gabe V
 
     del U, D, Ds, k, PCs, scales 
     
@@ -208,19 +218,20 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
             CM[:,Range]	= np.sqrt(2) * Qij
             Range = Range + m
 
+	np.save('cm.npy', CM);
     # Now we have nbcm = m(m+1)/2 cumulants matrices stored in a big m x m*nbcm array.
 
     #	Setup for joing diag
     #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
     if (smart_setup):
-        print "in smart setup"
-        D,V = eig(CM[:,:m]);
-        print D.shape, V.shape;
+        if verbose: print( "Executing \'Smart Setup\'..." );
+        D,V = get_eigv(CM[:,:m]);
+        #np.save('smart_eigv.npy', V);
+        #np.save('smart_eigval.npy', D);
         for u in range(0, m*nbcm, m):
-            print CM.shape, CM[:,u:u+m].shape;
             CM[:,u:u+m] = CM[:,u:u+m].dot(V) ; 
         CM = V.T.dot(CM);
-
+	np.save('post_setup.npy', CM);
     #	"reg. setup" (supposedly equivalent as above, but not in practice)
     else: V = matrix(eye(m, dtype=float64));
         
@@ -274,7 +285,6 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
                 toff = gg[0,1] + gg[1,0]
                 theta = 0.5 * arctan2(toff, ton + sqrt(ton * ton + toff * toff))
                 Gain = (sqrt(ton * ton + toff * toff) - ton) / 4.0
-                
                 # Givens update
                 if abs(theta) > seuil:
                     encore = True
@@ -301,7 +311,6 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # ===================
     #np.save('v.npy', V);  # Debugging help -- Gabe V
     B = V.T * B
-    
     # Permute the rows of the separating matrix B to get the most energetic components first.
     # Here the **signals** are normalized to unit variance.  Therefore, the sort is
     # according to the norm of the columns of A = pinv(B)
@@ -450,8 +459,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
 		
-	a = io.loadmat('ubq_coords.mat');
-	mat = a['coords'];
-	jadeR(mat, m=40);
+	a = np.load('coords_awq.npy');
+	jadeR(a, m=60, smart_setup=True);
 	#modify to your coordinate file if interested
 	

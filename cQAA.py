@@ -35,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
+			u = MDAnalysis.Universe("hivp/hivp.pdb", "hivp/hivp_%i.dcd" %(i+1), permissive=False);
 		except:
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
@@ -76,7 +76,7 @@ def qaa(config, val):
 		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
+	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
 
 	#	Reshaping of coords
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
@@ -100,7 +100,7 @@ def minqaa(config, val, fulldat):
 	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 	
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.save: np.save('%s_eRMSD.npy' %(config['pname']), eRMSD );
+	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
@@ -108,8 +108,20 @@ def minqaa(config, val, fulldat):
 	jade_calc(coords, val, avgCoords, num_coords);
 
 #================================================
-def jade_calc(coords, val, avgCoords, num_coords):
+def jade_calc(config, coords, val, avgCoords, num_coords):
+
 	dim = 3;
+	numres = coords.shape[0]/dim;
+	#	Stats to determine % of time exhibiting anharmonicity
+	anharm = np.zeros((3,numres));
+	for i in range(3):
+		for j in range(numres):
+			tmp = ((coords[i::3,:])[j])
+			median = np.median(tmp);
+			stddev = np.std(tmp);
+			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / num_coords;
+	if val.save: np.save('savefiles/coord_anharm_%s.npy' %(config['pname']), anharm );
+	
 	if val.debug: print 'coords: ', numpy.shape(coords); 
 	
 	avgCoords = numpy.mean(coords, 1); 
@@ -210,9 +222,11 @@ def jade_calc(coords, val, avgCoords, num_coords):
 	numOfIC = subspace; # number of independent components to be resolved
 	
 	#	Performs jade and saves if main
+
 	print 'val.smart: ', val.smart;
 	icajade = jadeR(coords, lastEig, val.smart, val.single);
 	if (val.save) and __name__ == '__main__': np.save('savefiles/icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
 
 	#	Performs change of basis
@@ -258,7 +272,6 @@ if __name__ == '__main__':
 	config['startRes'] = 0;
 	config['numRes']=-1;
 	config['slice_val'] = 1;
-	print 'values.smart: ', values.smart;
 	if (values.coord_in == 'null'):
 		qaa(config, values);
 	else:
