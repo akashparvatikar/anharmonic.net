@@ -82,6 +82,7 @@ def qaa(config, val):
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
 	jade_calc(coords, val, avgCoords, num_coords);
 
 #================================================
@@ -103,6 +104,7 @@ def minqaa(config, val, fulldat):
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
 	jade_calc(coords, val, avgCoords, num_coords);
 
 #================================================
@@ -210,14 +212,14 @@ def jade_calc(coords, val, avgCoords, num_coords):
 	#	Performs jade and saves if main
 	print 'val.smart: ', val.smart;
 	icajade = jadeR(coords, lastEig, val.smart, val.single);
-	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+	if (val.save) and __name__ == '__main__': np.save('savefiles/icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
 
 	#	Performs change of basis
 	icacoffs = icajade.dot(coords)
 	icacoffs = numpy.asarray(icacoffs);
 	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
-	if (val.save) and __name__ == '__main__': np.save('icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
+	if (val.save) and __name__ == '__main__': np.save('savefiles/icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
 	
 	if val.graph:	
 		fig = plt.figure();
@@ -252,7 +254,7 @@ if __name__ == '__main__':
 	config['numOfTraj'] = 1;
 	config['startTraj'] = 0;
 	config['icadim'] = 60;
-	config['pname'] = 'pname';	#	Edit to fit your protein name
+	config['pname'] = 'hivp';	#	Edit to fit your protein name
 	config['startRes'] = 0;
 	config['numRes']=-1;
 	config['slice_val'] = 1;
