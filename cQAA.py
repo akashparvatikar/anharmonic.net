@@ -83,7 +83,7 @@ def qaa(config, val):
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
 	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
-	jade_calc(coords, val, avgCoords, num_coords);
+	jade_calc(config, coords, val, avgCoords, num_coords);
 
 #================================================
 def minqaa(config, val, fulldat):
@@ -105,7 +105,7 @@ def minqaa(config, val, fulldat):
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
 	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
-	jade_calc(coords, val, avgCoords, num_coords);
+	jade_calc(config, coords, val, avgCoords, num_coords);
 
 #================================================
 def jade_calc(config, coords, val, avgCoords, num_coords):
