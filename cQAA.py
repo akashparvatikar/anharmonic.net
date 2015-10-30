@@ -35,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("hivp/hivp.pdb", "hivp/hivp_%i.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("data/protein.pdb", "data/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
 		except:
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
@@ -82,6 +82,7 @@ def qaa(config, val):
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
 #================================================
@@ -103,6 +104,7 @@ def minqaa(config, val, fulldat):
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
 #================================================
@@ -220,15 +222,18 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 	numOfIC = subspace; # number of independent components to be resolved
 	
 	#	Performs jade and saves if main
-	icajade = jadeR(coords, lastEig, smart_setup=val.smart, single=val.single);
-	if (val.save) and __name__ == '__main__': np.save('icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+
+	print 'val.smart: ', val.smart;
+	icajade = jadeR(coords, lastEig, val.smart, val.single);
+	if (val.save) and __name__ == '__main__': np.save('savefiles/icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+
 	if val.debug: print 'icajade: ', numpy.shape(icajade);
 
 	#	Performs change of basis
 	icacoffs = icajade.dot(coords)
 	icacoffs = numpy.asarray(icacoffs);
 	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
-	if (val.save) and __name__ == '__main__': np.save('icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
+	if (val.save) and __name__ == '__main__': np.save('savefiles/icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs) 
 	
 	if val.graph:	
 		fig = plt.figure();
@@ -262,8 +267,8 @@ if __name__ == '__main__':
 	config = {};
 	config['numOfTraj'] = 1;
 	config['startTraj'] = 0;
-	config['icadim'] = 20;
-	config['pname'] = 'awq';	#	Edit to fit your protein name
+	config['icadim'] = 60;
+	config['pname'] = 'hivp';	#	Edit to fit your protein name
 	config['startRes'] = 0;
 	config['numRes']=-1;
 	config['slice_val'] = 1;
