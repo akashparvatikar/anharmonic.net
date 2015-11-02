@@ -53,7 +53,7 @@ class KabschAlign(object):
 	
 	def wKabschDriver(self, toXYZ, fromXYZ, sMed=1.5, maxIter=20):
 		scaleMed = sMed;
-		weights = numpy.ones((1, numpy.shape(toXYZ)[1])); print 'weights: ', numpy.shape(weights);
+		weights = numpy.ones( numpy.shape(toXYZ)[1] ); print 'weights: ', numpy.shape(weights);
 		flagOut = 0;
 		Rc = []; Tc = []; sigc = [];
 		for itr in range(0, maxIter):
@@ -78,9 +78,9 @@ class KabschAlign(object):
 			print 'wKABSCH: unequal array sizes';
 			return;
 		
-		if not (numpy.shape(weights)[0]==1):
-			print 'am here:'
-			weights = weights.T;
+		#if not (numpy.shape(weights)[0]==1):
+		#	print 'am here:'
+		#	weights = weights.T;
 			
 		dw = numpy.tile(weights, (3,1)); #print 'dw shape:', numpy.shape(dw);
 		wFromXYZ = dw * fromXYZ; #print 'wFromXYZ shape: ', numpy.shape(wFromXYZ);
@@ -97,7 +97,7 @@ class KabschAlign(object):
 		aa = numpy.zeros((3,3));
 		for i in range(0, numpy.shape(t1)[1]):
 			tmp = numpy.outer(t2[:,i],t1[:,i]); print 'tmp shape: ', numpy.shape(tmp);
-			aa = aa + numpy.multiply(weights[0,i], tmp);
+			aa = aa + numpy.multiply(weights[i], tmp);
 		aa = aa/numpy.sum(weights);
 		
 		[u,s,wh] = numpy.linalg.svd(aa);
