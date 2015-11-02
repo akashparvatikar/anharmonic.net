@@ -53,7 +53,7 @@ class KabschAlign(object):
 	
 	def wKabschDriver(self, toXYZ, fromXYZ, sMed=1.5, maxIter=20):
 		scaleMed = sMed;
-		weights = numpy.ones( numpy.shape(toXYZ)[1] ); print 'weights: ', numpy.shape(weights);
+		weights = numpy.ones( numpy.shape(toXYZ)[1] ); #print 'weights: ', numpy.shape(weights);
 		flagOut = 0;
 		Rc = []; Tc = []; sigc = [];
 		for itr in range(0, maxIter):
@@ -61,13 +61,13 @@ class KabschAlign(object):
 			Rc.append(R);
 			Tc.append(T);
 			tmp1 = numpy.reshape(numpy.tile(T, (numpy.shape(toXYZ[1]))), (numpy.shape(toXYZ)[0],numpy.shape(toXYZ)[1]));
-			deltaR = numpy.array( numpy.dot(R, fromXYZ) + tmp1 - toXYZ ); print 'deltaR shape: ', numpy.shape(deltaR);
-			print deltaR;
+			deltaR = numpy.array( numpy.dot(R, fromXYZ) + tmp1 - toXYZ ); #print 'deltaR shape: ', numpy.shape(deltaR);
+			#print deltaR;
 			numpy.save('deltaR.npy', deltaR);
-			nDeltaR = numpy.sqrt(numpy.sum(deltaR**2, axis = 0)); print 'nDeltaR shape:', numpy.shape(nDeltaR);
+			nDeltaR = numpy.sqrt(numpy.sum(deltaR**2, axis = 0)); #print 'nDeltaR shape:', numpy.shape(nDeltaR);
 			sig = scaleMed*numpy.median(nDeltaR);
 			sigc.append(sig);
-			weights = (sig**2)/((sig**2 + nDeltaR**2)**2); print numpy.shape(weights);
+			weights = (sig**2)/((sig**2 + nDeltaR**2)**2); #print numpy.shape(weights);
 		return ( R, T, eRMSD, err);
 			
 	def wKabsch(self, toXYZ, fromXYZ, weights):
@@ -86,17 +86,17 @@ class KabschAlign(object):
 		wFromXYZ = dw * fromXYZ; #print 'wFromXYZ shape: ', numpy.shape(wFromXYZ);
 		wToXYZ = dw * toXYZ; # print 'wToXYZ shape: ', numpy.shape(wToXYZ);
 		
-		m1 = numpy.sum(wFromXYZ, 1) / numpy.sum(weights); print numpy.shape(m1);
-		m2 = numpy.sum(wToXYZ, 1) / numpy.sum(weights); print numpy.shape(m2);
+		m1 = numpy.sum(wFromXYZ, 1) / numpy.sum(weights); #print numpy.shape(m1);
+		m2 = numpy.sum(wToXYZ, 1) / numpy.sum(weights); #print numpy.shape(m2);
 		
 		tmp1 = numpy.reshape(numpy.tile(m1,(len1[1])), (len1[0],len1[1]));
 		tmp2 = numpy.reshape(numpy.tile(m2,(len2[1])), (len2[0],len2[1])); 
-		t1 = numpy.reshape(fromXYZ - tmp1, (len1[0], len1[1])); print 't1 shape: ', numpy.shape(t1);
+		t1 = numpy.reshape(fromXYZ - tmp1, (len1[0], len1[1])); #print 't1 shape: ', numpy.shape(t1);
 		t2 = numpy.reshape(toXYZ - tmp2, (len2[0],len2[1]));
 		
 		aa = numpy.zeros((3,3));
 		for i in range(0, numpy.shape(t1)[1]):
-			tmp = numpy.outer(t2[:,i],t1[:,i]); print 'tmp shape: ', numpy.shape(tmp);
+			tmp = numpy.outer(t2[:,i],t1[:,i]); #print 'tmp shape: ', numpy.shape(tmp);
 			aa = aa + numpy.multiply(weights[i], tmp);
 		aa = aa/numpy.sum(weights);
 		
