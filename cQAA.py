@@ -35,7 +35,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("hivp/hivp.pdb", "hivp/hivp_%i.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
 		except:
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
