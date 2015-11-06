@@ -63,7 +63,7 @@ class KabschAlign(object):
 			tmp1 = numpy.reshape(numpy.tile(T, (numpy.shape(toXYZ[1]))), (numpy.shape(toXYZ)[0],numpy.shape(toXYZ)[1]));
 			deltaR = numpy.array( numpy.dot(R, fromXYZ) + tmp1 - toXYZ ); #print 'deltaR shape: ', numpy.shape(deltaR);
 			#print deltaR;
-			numpy.save('deltaR.npy', deltaR);
+			#numpy.save('deltaR.npy', deltaR);
 			nDeltaR = numpy.sqrt(numpy.sum(deltaR**2, axis = 0)); #print 'nDeltaR shape:', numpy.shape(nDeltaR);
 			sig = scaleMed*numpy.median(nDeltaR);
 			sigc.append(sig);
