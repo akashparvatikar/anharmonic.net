@@ -64,8 +64,8 @@ def qaa(config, val):
 
 		numres = numres-2;
 		#	Computes along whole trajectory
-		phidat.compute(u.trajectory, skip=config['sliceVal'])
-		psidat.compute(u.trajectory, skip=config['sliceVal'])
+		phidat.compute(u.trajectory, skip=config['slice_val'])
+		psidat.compute(u.trajectory, skip=config['slice_val'])
 	
 		#	Converts to nd-array and changes from [numRes,1,numSamples] to [numRes,numSamples]
 		phidat =  array(phidat)
