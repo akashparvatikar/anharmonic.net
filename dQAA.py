@@ -73,13 +73,13 @@ def qaa(config, val):
 		psidat =  array(psidat)
 		psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
 		
-		dihedral_dat = np.zeros((numres*2,trajlen))
+		dihedral_dat = np.zeros((numres*2,trajlen/config['slice_val']))
 		#	Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
 		dihedral_dat[0::2,:] = phidat
 		dihedral_dat[1::2,:] = phidat
 		
 		if i == start_traj:
-			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*2, trajlen))
+			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*2, trajlen/config['slice_val']))
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
