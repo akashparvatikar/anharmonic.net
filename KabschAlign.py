@@ -13,7 +13,7 @@ class KabschAlign(object):
 		Constructor
 		"""
 
-	def kabsch(self, toXYZ, fromXYZ, counter):
+	def kabsch(self, toXYZ, fromXYZ):
 		"""
 		Input is a 3 x N array of coordinates.
 		"""
