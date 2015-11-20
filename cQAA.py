@@ -74,10 +74,10 @@ def qaa(config, val):
 	trajlen = len(u.trajectory) / slice_val
 
 	#	Subtraction of trajectory dependent means
-	meanStruct = [];
+	centroid = [];
 	for i in range(num_traj):
-		meanStruct.append( np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0) );
-		#fulldat[i*trajlen:(i+1)*trajlen] -= meanStruct[i];
+		centroid.append( np.mean( (np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0)), axis=1) );
+		fulldat[i*trajlen:(i+1)*trajlen] -= centroid[i];
 
 	#	Final alignment
 	if val.debug: print 'num_coords: ', num_coords;
