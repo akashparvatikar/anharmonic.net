@@ -77,7 +77,7 @@ def qaa(config, val):
 	meanStruct = [];
 	for i in range(num_traj):
 		meanStruct.append( np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0) );
-		fulldat[i*trajlen:(i+1)*trajlen] -= meanStruct[i];
+		#fulldat[i*trajlen:(i+1)*trajlen] -= meanStruct[i];
 
 	#	Final alignment
 	if val.debug: print 'num_coords: ', num_coords;
