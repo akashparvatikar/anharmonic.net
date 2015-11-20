@@ -77,7 +77,7 @@ def qaa(config, val):
 	centroid = [];
 	for i in range(num_traj):
 		centroid.append( np.mean( (np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0)), axis=1) );
-		fulldat[i*trajlen:(i+1)*trajlen] -= centroid[i];
+		fulldat[i*trajlen:(i+1)*trajlen] -= np.tile( centroid[i], (trajlen, num_atoms) ).reshape( (trajlen,3,-1), order = 'F' );
 
 	#	Final alignment
 	if val.debug: print 'num_coords: ', num_coords;
