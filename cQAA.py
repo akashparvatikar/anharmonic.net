@@ -32,6 +32,7 @@ def qaa(config, val):
 	dim = 3;
 	startRes = config['startRes'];
 	numRes = config['numRes'];
+	slice_val = config['slice_val'];
 	for i in range(start_traj,num_traj):
 		#	!Edit to your trajectory format!
 		try:
