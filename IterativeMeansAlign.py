@@ -41,7 +41,7 @@ class IterativeMeansAlign(object):
 			avgCoords.append(mnC);
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
-				[R, T, xRMSD, err] = kalign.wKabschDriver(mnC, fromXYZ);
+				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
 				tmpRMSD.append(xRMSD); 
 				tmp = numpy.tile(T, (Na,1)).T;
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  

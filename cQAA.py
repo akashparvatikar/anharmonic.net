@@ -67,10 +67,18 @@ def qaa(config, val):
 			fulldat[:,:,:] = d;
 		else: fulldat = mmap_concat(fulldat, d);
 
-	#	Final averaging
 	num_coords = fulldat.shape[0];
 	dim = fulldat.shape[1];
 	num_atoms = fulldat.shape[2];
+	trajlen = len(u.trajectory) / slice_val
+
+	#	Subtraction of trajectory dependent means
+	meanStruct = [];
+	for i in range(num_traj):
+		meanStruct.append( np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0) );
+		fulldat[i*trajlen:(i+1)*trajlen] -= meanStruct[i];
+
+	#	Final alignment
 	if val.debug: print 'num_coords: ', num_coords;
 	if num_traj > 1:
 		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
