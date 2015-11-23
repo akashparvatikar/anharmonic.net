@@ -134,7 +134,7 @@ def qaa(config, val):
 	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
 	
 	#	Performs change of basis
-	icacoffs = icajade.dot(fulldat)
+	icacoffs = icajade.dot(trigdat)
 	icacoffs = numpy.asarray(icacoffs); 
 	
 	if val.debug: print 'icacoffs shape: ', numpy.shape(icacoffs);
