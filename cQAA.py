@@ -26,7 +26,7 @@ def mmap_concat(a,b):
 #================================================
 def qaa(config, val):
 	iterAlign = IterativeMeansAlign();
-	itr = []; avgCoords = []; eRMSD = [], untouched_coords = [];
+	itr = []; avgCoords = []; eRMSD = []; untouched_coords = [];
 	start_traj = config['startTraj'];
 	num_traj = config['numOfTraj'];
 	dim = 3;
