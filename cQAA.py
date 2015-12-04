@@ -26,7 +26,7 @@ def mmap_concat(a,b):
 #================================================
 def qaa(config, val):
 	iterAlign = IterativeMeansAlign();
-	itr = []; avgCoords = []; eRMSD = [];
+	itr = []; avgCoords = []; eRMSD = [], untouched_coords = [];
 	start_traj = config['startTraj'];
 	num_traj = config['numOfTraj'];
 	dim = 3;
@@ -52,7 +52,7 @@ def qaa(config, val):
 				cacoords.append(f.T);
 				frames.append(ts.frame);
 			counter = counter + 1;
-		
+		untouched_coords.append(cacoords);
 		if numRes == -1:
 			numRes = atom.numberOfResidues();
 
@@ -72,7 +72,7 @@ def qaa(config, val):
 	dim = fulldat.shape[1];
 	num_atoms = fulldat.shape[2];
 	trajlen = len(u.trajectory) / slice_val
-
+	if val.debug and val.save: np.save('savefiles/%s_unt_coords.npy' %(config['pname']), array(untouched_coords));
 	#	Subtraction of trajectory dependent means
 	centroid = [];
 	for i in range(num_traj):
