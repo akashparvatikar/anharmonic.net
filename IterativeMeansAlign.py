@@ -42,8 +42,11 @@ class IterativeMeansAlign(object):
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
 				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
+				print T.shape;
 				tmpRMSD.append(xRMSD); 
 				tmp = numpy.reshape(numpy.tile(T, Na), (Na,dim)).T;
+				print numpy.dot(R,fromXYZ).shape;
+				print tmp.shape;
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
 				coords[i] = pxyz;
 			eRMSD.append(numpy.array(tmpRMSD).T);
