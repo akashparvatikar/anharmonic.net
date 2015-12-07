@@ -88,6 +88,7 @@ def qaa(config, val):
 	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
 
 	#	Reshaping of coords
+	if val.save and val.debug: np.save('savefiles/%s_debugcoords.npy' %(config['pname']), fulldat);
 	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
 	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
