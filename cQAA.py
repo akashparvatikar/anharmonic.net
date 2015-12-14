@@ -73,6 +73,7 @@ def qaa(config, val):
 	num_atoms = fulldat.shape[2];
 	trajlen = len(u.trajectory) / slice_val
 	if val.debug and val.save: np.save('savefiles/%s_unt_coords.npy' %(config['pname']), array(untouched_coords));
+	if val.debug and val.save: np.save('savefiles/%s_fulldat.npy' %(config['pname']), fulldat);
 	#	Subtraction of trajectory dependent means
 	centroid = [];
 	for i in range(num_traj):
