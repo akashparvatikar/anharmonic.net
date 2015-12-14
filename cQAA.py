@@ -73,7 +73,7 @@ def qaa(config, val):
 	plt.ion();
 	for i in range(500):
 		ax.plot(fulldat[i,0],fulldat[i,1],fulldat[i,2]);
-		plt.set_title('%i' %(i));
+		ax.set_title('%i' %(i));
 		plt.show();
 		plt.cla();
 
