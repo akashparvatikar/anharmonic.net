@@ -71,8 +71,8 @@ def qaa(config, val):
 	fig = plt.figure();
 	ax = fig.gca(projection='3d');
 	plt.ion();
-	for i in range(500):
-		ax.plot(fulldat[i,0],fulldat[i,1],fulldat[i,2]);
+	for i in range(100):
+		ax.plot(d[i,0],d[i,1],d[i,2]);
 		ax.set_title('%i' %(i));
 		plt.show();
 		plt.cla();
