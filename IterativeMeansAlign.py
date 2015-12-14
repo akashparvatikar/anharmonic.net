@@ -45,6 +45,7 @@ class IterativeMeansAlign(object):
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
 				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
+				ax.set_title('pre %i' %(i));
 				plt.show();
 				plt.cla();
 				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
@@ -53,6 +54,7 @@ class IterativeMeansAlign(object):
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
 				coords[i] = pxyz;
 				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
+				ax.set_title('post %i' %(i));
 				plt.show();
 				plt.cla();
 			eRMSD.append(numpy.array(tmpRMSD).T);
