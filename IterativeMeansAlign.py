@@ -34,10 +34,10 @@ class IterativeMeansAlign(object):
 		itr = 1; 			# iteration number
 		
 		eRMSD = [];
-		
+		"""
 		fig = plt.figure();
 		ax = fig.gca(projection='3d');
-		plt.ion();
+		plt.ion();"""
 		while not(ok):
 			tmpRMSD = [];
 			mnC = numpy.mean(coords, 0); 
