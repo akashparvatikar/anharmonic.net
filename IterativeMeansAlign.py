@@ -44,19 +44,19 @@ class IterativeMeansAlign(object):
 			avgCoords.append(mnC);
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
-				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
+				"""ax.plot(coords[i,0], coords[i,1], coords[i,2]);
 				ax.set_title('pre %i' %(i));
 				plt.show();
-				plt.cla();
+				plt.cla();"""
 				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
 				tmpRMSD.append(xRMSD); 
 				tmp = numpy.tile(T.flatten(), (Na,1)).T;
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
-				coords[i] = pxyz;
+				coords[i] = pxyz;"""
 				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
 				ax.set_title('post %i' %(i));
 				plt.show();
-				plt.cla();
+				plt.cla();"""
 			eRMSD.append(numpy.array(tmpRMSD).T);
 			newMnC = numpy.mean(coords,0); 
 			err = math.sqrt(sum( (mnC.flatten()-newMnC.flatten())**2) )

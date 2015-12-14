@@ -68,6 +68,15 @@ def qaa(config, val):
 			fulldat[:,:,:] = d;
 		else: fulldat = mmap_concat(fulldat, d);
 
+	fig = plt.figure();
+	ax = fig.gca(projection='3d');
+	plt.ion();
+	for i in range(500):
+		ax.plot(fulldat[i,0],fulldat[i,1],fulldat[i,2]);
+		plt.set_title('%i' %(i));
+		plt.show();
+		plt.cla();
+
 	num_coords = fulldat.shape[0];
 	dim = fulldat.shape[1];
 	num_atoms = fulldat.shape[2];
