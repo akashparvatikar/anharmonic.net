@@ -25,6 +25,7 @@ def mmap_concat(a,b):
 
 #================================================
 def qaa(config, val):
+
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = []; untouched_coords = [];
 	start_traj = config['startTraj'];
@@ -33,7 +34,9 @@ def qaa(config, val):
 	startRes = config['startRes'];
 	numRes = config['numRes'];
 	slice_val = config['slice_val'];
-	for i in range(start_traj,num_traj):
+	fulldat = [];
+
+	for i in range(start_traj,start_traj+num_traj):
 		#	!Edit to your trajectory format!
 		try:
 			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
@@ -42,7 +45,7 @@ def qaa(config, val):
 			exit();
 
 		atom = u.selectAtoms('name CA');
-
+		resname = atom.resnames();
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
 		counter = 0;
 		cacoords = []; frames = [];
@@ -52,10 +55,9 @@ def qaa(config, val):
 				cacoords.append(f.T);
 				frames.append(ts.frame);
 			counter = counter + 1;
-		untouched_coords.append(cacoords);
+
 		if numRes == -1:
 			numRes = atom.numberOfResidues();
-
 		if atom.numberOfResidues() == numRes:
 			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4, val.verbose);
 		else:
@@ -63,68 +65,65 @@ def qaa(config, val):
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
-		if ( i == start_traj):
-			fulldat = np.memmap('coord_data.array', dtype='float64', mode='w+', shape=(d.shape[0], d.shape[1], d.shape[2]));
-			fulldat[:,:,:] = d;
-		else: fulldat = mmap_concat(fulldat, d);
+		fulldat.append(d);
 
-	fig = plt.figure();
-	ax = fig.gca(projection='3d');
-	plt.ion();
-	for i in range(100):
-		ax.plot(d[i,0],d[i,1],d[i,2]);
-		ax.set_title('%i' %(i));
-		plt.show();
-		plt.cla();
+	print len(fulldat);
+	print numRes, dim;
+	try:
+		fulldat = np.array(fulldat).reshape( (-1, dim, numRes) )
+	except:
+		tmp = [];
+		for i in fulldat:
+			for j in i:
+				tmp.append(j);
+		fulldat = np.array(tmp);
 
+	print fulldat.shape;	
 	num_coords = fulldat.shape[0];
 	dim = fulldat.shape[1];
 	num_atoms = fulldat.shape[2];
 	trajlen = len(u.trajectory) / slice_val
-	if val.debug and val.save: np.save('savefiles/%s_unt_coords.npy' %(config['pname']), array(untouched_coords));
-	if val.debug and val.save: np.save('savefiles/%s_fulldat.npy' %(config['pname']), fulldat);
-	#	Subtraction of trajectory dependent means
-	centroid = [];
-	for i in range(num_traj):
-		centroid.append( np.mean( (np.mean( fulldat[i*trajlen:(i+1)*trajlen], 0)), axis=1) );
-		fulldat[i*trajlen:(i+1)*trajlen] -= np.tile( centroid[i], (trajlen, num_atoms) ).reshape( (trajlen,3,-1), order = 'F' );
 
-	#	Final alignment
+	if val.debug and val.save: np.save('savefiles/%s_full_prealign.npy' %(config['pname']), np.array(fulldat));
 	if val.debug: print 'num_coords: ', num_coords;
-	if num_traj > 1:
-		[itr, avgCoords, eRMSD, fulldat[:,:,:] ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
-
-	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
-
-	#	Reshaping of coords
-	if val.save and val.debug: np.save('savefiles/%s_debugcoords.npy' %(config['pname']), fulldat);
-	coords = np.memmap('cqaa.array', dtype='float64', mode='w+', shape=(fulldat.shape[1]*fulldat.shape[2], fulldat.shape[0]));
-	coords[:,:] = fulldat.reshape((fulldat.shape[0],-1), order='F').T
-
-	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
-	jade_calc(config, coords, val, avgCoords, num_coords);
-
-#================================================
-def minqaa(config, val, fulldat):
-	iterAlign = IterativeMeansAlign();
-	itr = []; avgCoords = []; eRMSD = [];
-	dim = 3;
-
-	#	Final averaging
-	assert(len(fulldat.shape) == 3);
-	num_coords = fulldat.shape[0];
-	dim = fulldat.shape[1];
-	num_atoms = fulldat.shape[2];
-
-	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 	
+	#	Final alignment
+	if num_traj > 1:
+		[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
+
 	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
 	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
+	if val.debug and val.save: np.save('savefiles/%s_full_postalign.npy' %(config['pname']), np.array(fulldat));
+
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
 	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
+	pdbgen(fulldat, resname, config, val);
+	jade_calc(config, coords, val, avgCoords, num_coords);
+
+#================================================
+def minqaa(config, val, fulldat):
+	#	Setup
+	iterAlign = IterativeMeansAlign();
+	itr = []; avgCoords = []; eRMSD = [];
+	dim = 3;
+	assert(len(fulldat.shape) == 3);
+	num_coords = fulldat.shape[0];
+	dim = fulldat.shape[1];
+	num_atoms = fulldat.shape[2];
+	
+	#	Final averaging
+	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
+	
+	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
+	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
+	
+	#	Reshaping of coords
+	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
+
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
+	#pdbgen(fulldat, resname);
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
 #================================================
@@ -269,6 +268,22 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 	return icamat;
 
 #================================================
+
+def pdbgen(fulldat, resname, config, val):
+	
+	if val.verbose: print 'Constructing PDB file...';
+	f = open('savefiles/%s.pdb' %(config['pname']), 'w+');
+	for i in range(fulldat.shape[0]):
+		f.write('%-6s    %4i\n' %('MODEL', i+1));
+		for j in range(fulldat.shape[2]):
+			f.write('%-6s%5i  CA  %s  %4i    %8.3f%8.3f%8.3f%6.2f%6.2f           C  \n' \
+				%('ATOM', j+1, resname[j], j+1, fulldat[i,0,j], fulldat[i,1,j], fulldat[i,2,j], 0.0, 0.0));
+		f.write('ENDMDL\n');
+	f.close();
+	if val.verbose: print 'PDB file completed!';
+
+#================================================
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
@@ -285,13 +300,14 @@ if __name__ == '__main__':
 
 #	Config settings -- only here if cQAA is called directly from python
 	config = {};
-	config['numOfTraj'] = 1;
+	config['numOfTraj'] = 123;
 	config['startTraj'] = 0;
 	config['icadim'] = 60;
-	config['pname'] = 'hivp';	#	Edit to fit your protein name
+	config['pname'] = 'ubqfull';	#	Edit to fit your protein name
 	config['startRes'] = 0;
+
 	config['numRes']=-1;
-	config['slice_val'] = 1;
+	config['slice_val'] = 10;
 	if (values.coord_in == 'null'):
 		qaa(config, values);
 	else:
