@@ -211,7 +211,9 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 		ax.scatter(pcacoffs[0,:], pcacoffs[1,:], pcacoffs[2,:], marker='o', c=[0.6,0.6,0.6]);
 		print 'fig4';
 		plt.show();
-	
+
+	#==========================================================================	
+	#	Setup to determine proper ICA dimensionality
 	if val.setup:
 		[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
 		si = numpy.argsort(-pcas.ravel());
@@ -231,6 +233,20 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 		a = input('Enter desired ICA dimension (enter -1 for default): ');
 		if (a > 0):
 			config['icadim'] = a;
+	#	End ICA Setup
+	#==========================================================================
+	
+"""	#==========================================================================	
+	#	Kurtosis Sliding Window Computation
+
+	window = config['window_size'];
+	kurt = [];
+	for i in range(window, coords.shape[1]):
+		tmp = [];
+		
+
+	#	End Kurtosis
+	#========================================================================== IN PROGRESS"""
 	
 	if val.debug and val.save:
 		np.save('coords_%s.npy' %(config['pname']) , coords);	
