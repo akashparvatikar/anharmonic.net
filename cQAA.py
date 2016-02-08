@@ -11,6 +11,7 @@ from numpy import *
 from jade import *
 import timing
 import argparse
+from scipy.stats import kurtosis
 
 #a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(a,b):
@@ -35,6 +36,7 @@ def qaa(config, val):
 	numRes = config['numRes'];
 	slice_val = config['slice_val'];
 	fulldat = [];
+	global dt;
 
 	for i in range(start_traj,start_traj+num_traj):
 		#	!Edit to your trajectory format!
@@ -46,6 +48,8 @@ def qaa(config, val):
 
 		atom = u.selectAtoms('name CA');
 		resname = atom.resnames();
+		dt = u.trajectory.dt;
+		if val.debug: print 'dt: ', dt;
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
 		counter = 0;
 		cacoords = []; frames = [];
@@ -236,17 +240,32 @@ def jade_calc(config, coords, val, avgCoords, num_coords):
 	#	End ICA Setup
 	#==========================================================================
 	
-"""	#==========================================================================	
+	#==========================================================================	
 	#	Kurtosis Sliding Window Computation
 
-	window = config['window_size'];
+	if val.verbose: timing.log('Computing kurtosis...');
+	#	coords = 3*numRes x numSamples
+	window = config['kurtosis_window'];
 	kurt = [];
+	#dt = u.trajectory.dt; #	Time Delta btwn. frames
+	h = (1/2.)*dt*window #	Half-Life of window (in nanoseconds), should be: dt*(window_len)/2??
+	tao = (h/dt)/np.log(2);
+	weights = np.arange(window);
+	#alpha = 1 - np.exp(tao**-1);	#	From paper
+	alpha = (1 - np.exp(tao**-1)) / (np.exp((-window - 1)*tao**-1) - 1);	#	reciprocal of summation of W(k)
+	W = lambda k: alpha*np.exp(-(window-k)*tao**-1);
+	weights = map(W, weights);
+	
+	if val.debug: print np.sum(weights);
+
 	for i in range(window, coords.shape[1]):
-		tmp = [];
-		
+		kurt.append(np.mean(kurtosis(coords[:,i-window:i].dot(np.diag(weights)), axis=1)));
+	
+	if val.save: np.save('savefiles/%s_kurtosis.npy' %(config['pname']), np.array(kurt));
+	if val.verbose: timing.log('Kurtosis computed -- moving to JADE...');
 
 	#	End Kurtosis
-	#========================================================================== IN PROGRESS"""
+	#========================================================================== IN PROGRESS
 	
 	if val.debug and val.save:
 		np.save('coords_%s.npy' %(config['pname']) , coords);	
@@ -316,14 +335,15 @@ if __name__ == '__main__':
 
 #	Config settings -- only here if cQAA is called directly from python
 	config = {};
-	config['numOfTraj'] = 123;
+	config['numOfTraj'] = 10;
 	config['startTraj'] = 0;
 	config['icadim'] = 60;
-	config['pname'] = 'ubqfull';	#	Edit to fit your protein name
+	config['pname'] = 'kurt_test_ubq';	#	Edit to fit your protein name
 	config['startRes'] = 0;
 
 	config['numRes']=-1;
 	config['slice_val'] = 10;
+	config['kurtosis_window'] = 100;
 	if (values.coord_in == 'null'):
 		qaa(config, values);
 	else:
