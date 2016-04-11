@@ -12,13 +12,16 @@ from jade import *
 import timing
 import argparse
 from scipy.stats import kurtosis
+import os.path as path
 
 #a is mem-mapped array, b is array in RAM we are adding to a.
-def mmap_concat(a,b):
-	assert(a.shape[1] == b.shape[1] and a.shape[2] == b.shape[2]);
-	c = np.memmap('coord_data.array', dtype='float64', mode='r+', shape=(a.shape[0]+b.shape[0],a.shape[1],a.shape[2]), order='F')
-	c[a.shape[0]:, :, : ] = b
-	return c
+def mmap_concat(shape,b,filename):
+	assert(shape[1] == b.shape[1] and shape[2] == b.shape[2]);
+	c = np.memmap(filename, dtype='float64', mode='r+', shape=(shape[0]+b.shape[0],shape[1],shape[2]))
+	c[shape[0]:, :, : ] = b
+	newshape = c.shape;	
+	del c;	#	Flushes changes to memory and then deletes.  New array can just be called using filename
+	return newshape;
 
 #	Main  Code
 #	||		||
@@ -28,17 +31,20 @@ def mmap_concat(a,b):
 def qaa(config, val):
 
 	iterAlign = IterativeMeansAlign();
-	itr = []; avgCoords = []; eRMSD = []; untouched_coords = [];
+	itr = []; avgCoords = []; eRMSD = [];
 	start_traj = config['startTraj'];
 	num_traj = config['numOfTraj'];
-	dim = 3;
 	startRes = config['startRes'];
 	numRes = config['numRes'];
 	slice_val = config['slice_val'];
 	fulldat = [];
+	dim = 3;
 	global dt;
 
+	#	BEGIN FOR LOOP -------------------------------
 	for i in range(start_traj,start_traj+num_traj):
+
+		#	Import from MDAnalysis			
 		#	!Edit to your trajectory format!
 		try:
 			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03i.dcd" %(i), permissive=False);
@@ -49,10 +55,13 @@ def qaa(config, val):
 		atom = u.selectAtoms('name CA');
 		resname = atom.resnames();
 		dt = u.trajectory.dt;
+
 		if val.debug: print 'dt: ', dt;
 		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
-		counter = 0;
+
+		counter = 0;	#	For slicing trajectory
 		cacoords = []; frames = [];
+
 		for ts in u.trajectory:
 			if (counter % config['slice_val'] == 0):
 				f = atom.coordinates();
@@ -60,19 +69,26 @@ def qaa(config, val):
 				frames.append(ts.frame);
 			counter = counter + 1;
 
+		#	Alignment
 		if numRes == -1:
 			numRes = atom.numberOfResidues();
 		if atom.numberOfResidues() == numRes:
 			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4, val.verbose);
 		else:
-			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4, val.verbose);				
+			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4, val.verbose);
+
+		#	Storing Data	
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
 		fulldat.append(d);
+	
+	#	END FOR LOOP ------------------------------
 
-	print len(fulldat);
-	print numRes, dim;
+	if val.debug: print len(fulldat);
+	if val.debug: print numRes, dim;
+
+	#	Converts fulldat from list to ndarray	
 	try:
 		fulldat = np.array(fulldat).reshape( (-1, dim, numRes) )
 	except:
@@ -91,7 +107,7 @@ def qaa(config, val):
 	if val.debug and val.save: np.save('savefiles/%s_full_prealign.npy' %(config['pname']), np.array(fulldat));
 	if val.debug: print 'num_coords: ', num_coords;
 	
-	#	Final alignment
+	#	Final alignment	--------------
 	if num_traj > 1:
 		[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
 
@@ -99,7 +115,7 @@ def qaa(config, val):
 	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
 	if val.debug and val.save: np.save('savefiles/%s_full_postalign.npy' %(config['pname']), np.array(fulldat));
 
-	#	Reshaping of coords
+	#	Reshaping of coords	--------------
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
 	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
