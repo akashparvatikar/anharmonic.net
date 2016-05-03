@@ -3,6 +3,7 @@ import numpy
 import numpy.linalg
 import math
 from KabschAlign import *
+import numpy as np
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -14,7 +15,10 @@ class IterativeMeansAlign(object):
 		Constructor
 		"""
 
-	def iterativeMeans(self, coords, eps, maxIter, verbose):
+	def iterativeMeans(self, coords, eps, maxIter, verbose, mapped=False, fname='na',shape=[0,0,0]):
+
+		if mapped:
+			coords = np.memmap(fname, dtype='float64', mode='r+').reshape(shape) 
 		# all coordinates are expected to be passed as a (Ns x 3 x Na)  array
 		# where Na = number of atoms; Ns = number of snapshots
 	
@@ -52,7 +56,7 @@ class IterativeMeansAlign(object):
 				tmpRMSD.append(xRMSD); 
 				tmp = numpy.tile(T.flatten(), (Na,1)).T;
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
-				coords[i] = pxyz;"""
+				coords[i,:,:] = pxyz;"""
 				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
 				ax.set_title('post %i' %(i));
 				plt.show();
@@ -64,6 +68,9 @@ class IterativeMeansAlign(object):
 			if err <= eps or itr == maxIter:
 				ok = 1;
 			itr = itr + 1;
+		if mapped:
+			del coords;
+			coords = 0;
 		return [itr,avgCoords,eRMSD,coords];
 
 if __name__=='__main__':

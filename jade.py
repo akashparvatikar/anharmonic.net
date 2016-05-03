@@ -55,7 +55,7 @@ def get_eigv(X):
 	V = V[:,keys];
 	return D, V;
 
-def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
+def jadeR(filename, mapshape, val, m=None):
     """
     Blind separation of real signals with JADE.
     
@@ -77,7 +77,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
              to the m first principal components. Defaults to None, in which
              case m=n.
         
-        verbose -- print info on progress. Default is True.
+        val.verbose -- print info on progress. Default is True.
     
     Returns:
     
@@ -118,37 +118,37 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     Copyright original Matlab code : Jean-Francois Cardoso <cardoso@sig.enst.fr>
     Copyright Numpy translation : Gabriel Beckers <gabriel@gbeckers.nl>
     """
-    
+    smart_setup = val.smart;
+    X = np.memmap(filename, dtype='float64', shape=mapshape)
+	
+
     # GB: we do some checking of the input arguments and copy data to new
     # variables to avoid messing with the original input. We also require double
     # precision (float64) and a numpy matrix type for X.
     assert isinstance(X, ndarray),\
         "X (input data matrix) is of the wrong type (%s)" % type(X)
-    origtype = X.dtype # remember to return matrix B of the same type
-    if single: X = matrix(X.astype('float32'));
-    else: X = matrix(X.astype(float64));
-    assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
-    assert (verbose == True) or (verbose == False), \
-        "verbose parameter should be either True or False"
 
-    [n,T] = X.shape # GB: n is number of input signals, T is number of samples
-    print X.shape;
+    assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
+
+    [n,T] = mapshape # GB: n is number of input signals, T is number of samples
+    if val.verbose: print mapshape;
     if m==None:
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
         "jade -> Do not ask more sources (%d) than sensors (%d )here!!!" % (m,n)
     #np.save('premean.npy', X);  # Debugging help -- Gabe V
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Looking for %d sources" % m
         print >> stdout, "jade -> Removing the mean value"
     xmean = X.mean(axis = 1).reshape((n,1));
-    X = X - xmean.dot( np.ones((1,T)) );
-    np.save('zeromean.npy', X);  # Debugging help -- Gabe V
+    X[:,:] = X - (xmean.dot( np.ones((1,T)) )).astype('float64');
+    X.flush();
+    #np.save('zeromean.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Whitening the data"
-    [D,U] = get_eigv((X * X.T) / float(T)) # An eigen basis for the sample covariance matrix
+    [D,U] = get_eigv((X.dot(X.T)) / float(T)) # An eigen basis for the sample covariance matrix
     k = D.argsort()
     Ds = D[k] # Sort by increasing variances
     PCs = arange(n-m, n)    # The m most significant princip. comp. by *increasing* variance
@@ -158,17 +158,18 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     
     # --- Scaling  ------------------------------------------------------
     scales = sqrt(Ds[PCs]) # The scales of the principal components .
-    B = diag(1./scales) * B  # Now, B does PCA followed by a rescaling = sphering
+    B = diag(1./scales).dot(B);  # Now, B does PCA followed by a rescaling = sphering
     #B[-1,:] = -B[-1,:] # GB: to make it compatible with octave
     # --- Sphering ------------------------------------------------------
-    X = B * X # %% We have done the easy part: B is a whitening matrix and X is white.
-  
+    X[:m,:] = B.dot(X).astype('float64'); # %% We have done the easy part: B is a whitening matrix and X is white.
+    del X;
+    X = np.memmap(filename, dtype='float64', shape=(m,T));
     #np.save('eigv.npy', U);  # Debugging help -- Gabe V
     #np.save('eigval.npy', D);  # Debugging help -- Gabe V
     #np.save('whitener.npy', B);  # Debugging help -- Gabe V
-    np.save('whitened.npy', X);  # Debugging help -- Gabe V
+    if val.debug and val.save: np.save('savefiles/whitened.npy', X[:,:]);  # Debugging help -- Gabe V
 
-    del U, D, Ds, k, PCs, scales 
+    del U, D, Ds, k, PCs, scales; 
     
     # NOTE: At this stage, X is a PCA analysis in m components of the real data, except that
     # all its entries now have unit variance.  Any further rotation of X will preserve the
@@ -185,7 +186,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     
     # Estimation of the cumulant matrices.
     # ====================================
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Estimating cumulant matrices"
     
     # Reshaping of the data, hoping to speed up things a little bit...
@@ -209,12 +210,12 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
         Xijm = multiply(Xim, Xim)
         # Note to myself: the -R on next line can be removed: it does not affect
         # the joint diagonalization criterion
-        Qij = multiply(scale*Xijm, X) * X.T - R - 2 * dot(R[:,im], R[:,im].T)
+        Qij = multiply(scale*Xijm, X).dot(X.T) - R - 2 * dot(R[:,im], R[:,im].T)
         CM[:,Range] = Qij
         Range = Range  + m 
         for jm in range(im):
             Xijm = multiply(Xim, X[jm,:])
-            Qij = multiply(scale*Xijm, X) * X.T - R[:,im] * R[:,jm].T - R[:,jm] * R[:,im].T
+            Qij = multiply(scale*Xijm, X).dot(X.T) - R[:,im] * R[:,jm].T - R[:,jm] * R[:,im].T
             CM[:,Range]	= np.sqrt(2) * Qij
             Range = Range + m
 
@@ -224,7 +225,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #	Setup for joing diag
     #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
     if (smart_setup):
-        if verbose: print( "Executing \'Smart Setup\'..." );
+        if val.verbose: print( "Executing \'Smart Setup\'..." );
         D,V = get_eigv(CM[:,:m]);
         #np.save('smart_eigv.npy', V);
         #np.save('smart_eigval.npy', D);
@@ -261,12 +262,12 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     
     # Joint diagonalization proper
     #np.save('cm.npy', CM);  # Debugging help -- Gabe V
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Contrast optimization by joint diagonalization"
     
     while encore:
         encore = False
-        if verbose:
+        if val.verbose:
             print >> stdout, "jade -> Sweep #%3d" % sweep ,
         sweep = sweep + 1
         upds  = 0
@@ -301,10 +302,10 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
                     On = On + Gain
                     Off = Off - Gain
                     
-        if verbose:
+        if val.verbose:
             print >> stdout, "completed in %d rotations" % upds
         updates = updates + upds
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Total of %d Givens rotations" % updates
     
     # A separating matrix
@@ -315,7 +316,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # Here the **signals** are normalized to unit variance.  Therefore, the sort is
     # according to the norm of the columns of A = pinv(B)
 
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Sorting the components"
     
     A = pinv(B)
@@ -325,14 +326,14 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     B = B[::-1,:]     # % Is this smart ?
     #np.save('B.npy', B);  # Debugging help -- Gabe V
     
-    if verbose:
+    if val.verbose:
         print >> stdout, "jade -> Fixing the signs"
     b	= B[:,0]
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
-    np.save('pyica.npy', B);  # Debugging help -- Gabe V
-    return B.astype(origtype)
+    if val.debug and val.save: np.save('savefiles/icajade_debug.npy', B);  # Debugging help -- Gabe V
+    return B;
     
     
     # Revision history of MATLAB code:
@@ -360,7 +361,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     #
     #-  V1.4, Dec. 23 1997 
     #   - Minor clean up.
-    #   - Added a verbose switch
+    #   - Added a val.verbose switch
     #   - Added the sorting of the rows of B in order to fix in some reasonable way the
     #     permutation indetermination.  See note 2) below.
     #
@@ -459,7 +460,7 @@ def jadeR(X, m=None, verbose=True, smart_setup=False, single=False):
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
 		
-	a = np.load('coords_awq.npy');
+	#a = np.load('coords_awq.npy');
 	jadeR(a, m=60, smart_setup=True);
 	#modify to your coordinate file if interested
 	
