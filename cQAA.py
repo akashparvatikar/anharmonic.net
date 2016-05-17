@@ -251,7 +251,7 @@ def jade_calc(config, filename, mapshape, val):
 		print 'First 3 Dimensions of Icacoffs';
 		plt.show();
 
-	#	Saves array's to a dict and returns !!!Needs modification for memmapping!!!
+	#	Returns icajade matrix, ica filename, and the shape.
 	return icajade, icafile, icacoffs.shape;
 
 #================================================

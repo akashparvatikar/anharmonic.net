@@ -13,12 +13,14 @@ import argparse
 import warnings
 import timing
 
-#a is mem-mapped array, b is array in RAM we are adding to a.       
-def mmap_concat(a,b):
-	assert(a.shape[0] == b.shape[0]);
-	c = np.memmap('dihedral_data.array', dtype='float64', mode='r+', shape=(a.shape[0],a.shape[1]+b.shape[1]), order='F')
-	c[:, a.shape[1]: ] = b
-	return c
+#a is mem-mapped array, b is array in RAM we are adding to a.
+def mmap_concat(shape,b,filename):
+	assert(shape[1] == b.shape[1] and shape[2] == b.shape[2]);
+	c = np.memmap(filename, dtype='float64', mode='r+', shape=(shape[0]+b.shape[0],shape[1],shape[2]))
+	c[shape[0]:, :, : ] = b
+	newshape = c.shape;	
+	del c;	#	Flushes changes to memory and then deletes.  New array can just be called using filename
+	return newshape;
 
 def phisel(res):
 #MDAnalysis' phi_selection requires a segid be present while this doesn't.
@@ -35,7 +37,7 @@ def qaa(config, val):
 	for i in range(start_traj,num_traj+start_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("hivp/hivp.pdb", "hivp/hivp_%i.dcd" %(i+1), permissive=False);
+			u = MDAnalysis.Universe("pentapeptide/init-ww-penta.pdb", "pentapeptide/job%i-protein.dcd" %(i+1), permissive=False);
 		except:
 			raise ImportError('You must edit \'dQAA.py\' to fit your trajectory format!');
 			exit();
@@ -44,10 +46,8 @@ def qaa(config, val):
 	
 		phidat = TimeseriesCollection()
 		psidat = TimeseriesCollection()
-		if (start_traj != 0):
-			warnings.warn('Excluding trajectories %i-%i!' %(1, start_traj));
 
-		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections.
+		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections
 		if val.verbose: timing.log('Processing Trajectory %i' %(i+1));
 		numres = config['numRes']
 		trajlen = len(u.trajectory)
@@ -68,13 +68,14 @@ def qaa(config, val):
 		psidat.compute(u.trajectory, skip=config['slice_val'])
 	
 		#	Converts to nd-array and changes from [numRes,1,numSamples] to [numRes,numSamples]
-		phidat =  array(phidat)
-		phidat = phidat.reshape(phidat.shape[0],phidat.shape[2])
-		psidat =  array(psidat)
-		psidat = psidat.reshape(psidat.shape[0],psidat.shape[2])
+		phidat =  array(phidat).reshape(phidat.shape[0],phidat.shape[2]);
+		psidat =  array(psidat).reshape(psidat.shape[0],psidat.shape[2]);
 		
-		dihedral_dat = np.zeros((numres*2,trajlen/config['slice_val']))
-		#	Data stored as | sin(phi) | cos(phi) | sin(psi) | cos(psi) |
+		"""	Data stored as  | sin(phi) |---
+							| cos(phi) |---
+							| sin(psi) |---
+							| cos(psi) |---"""
+
 		dihedral_dat[0::2,:] = phidat
 		dihedral_dat[1::2,:] = phidat
 		
@@ -83,24 +84,7 @@ def qaa(config, val):
 			fulldat[:,:] = dihedral_dat
 		else:
 			fulldat = mmap_concat(fulldat, dihedral_dat);
-	if val.setup:
-		#	Cumulative Variance to determine JADE subspace
-		[pcas,pcab] = numpy.linalg.eig(numpy.cov(fulldat));
-		si = numpy.argsort(-pcas.ravel());
-		pcaTmp = pcas;
-		pcas = numpy.diag(pcas);
-		pcab = pcab[:,si];
-		
-		fig = plt.figure();
-		ax = fig.add_subplot(111);
-		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
-		ax.plot(y);
-		if val.verbose: print('Cov. Matrix spectrum cumulative sum');
-		plt.show();
-		a = input('Enter desired ICA dimension (enter -1 for default): ');
-		if (a > 0):
-			config['icadim'] = a;
-
+	
 	#	determining % time exhibiting anharmonicity
 	anharm = np.zeros((2,numres));
 	for i in range(2):
@@ -112,46 +96,65 @@ def qaa(config, val):
 
 	if val.save: np.save('savefiles/dih_anharm_%s.npy' %(config['pname']), anharm );
 
-	#	some set up for running JADE
-	if val.debug: print 'fulldat: ', fulldat.shape
-	Ncyc  = 1;
-	subspace = ica_dim;
-	lastEig = subspace; #	number of eigen-modes to be considered
-	numOfIC = subspace; #	number of independent components to be resolved
-
-	#	turning data into trig form
-	trigdat = np.memmap('trigdat.array', dtype='float64', mode='w+', shape=(numres*4, fulldat.shape[1]));
-	trigdat[0::4, :] = np.sin(fulldat[0::2, :]);
-	trigdat[1::4, :] = np.cos(fulldat[0::2, :]);
-	trigdat[2::4, :] = np.sin(fulldat[1::2, :]);	
-	trigdat[3::4, :] = np.cos(fulldat[1::2, :]);
-
-	#	Runs jade
-	if val.verbose: timing.log('Beginning JADE...');	
-	icajade = jadeR(trigdat, lastEig, verbose=val.verbose, smart_setup=val.smart, single=val.single);
-	if val.verbose: timing.log('Completed JADE...');
-	if (val.save) and __name__ == '__main__': np.save('icajade%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
-	if val.debug: print 'icajade shape: ', numpy.shape(icajade);
+def jade_calc(config, filename, mapshape, val):
 	
+	if val.debug:	
+		avgCoords = numpy.mean(coords, 1); 
+		print avgCoords;
+		print 'avgCoords: ', numpy.shape(avgCoords);
+	
+	#==========================================================================	
+	#	Setup to determine proper ICA dimensionality
+	if val.setup:
+		[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
+		si = numpy.argsort(-pcas.ravel());
+		pcaTmp = pcas;
+		pcas = numpy.diag(pcas);
+		pcab = pcab[:,si];
+		
+		fig = plt.figure();
+		ax = fig.add_subplot(111);
+		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
+		ax.plot(y*100);
+		ax.set_xlabel('Number of Principal Components');
+		ax.set_ylabel('Percent of Total Variance Preserved');
+		ax.set_title('Variance of Principal Components');
+		if val.verbose: print('Cov. Matrix spectrum cum. sum.');
+		plt.show();
+		a = input('Enter desired ICA dimension (enter -1 for default): ');
+		if (a > 0):
+			config['icadim'] = a;
+	#	End ICA Setup
+	#==========================================================================
+
+	# some set up for running JADE
+	subspace = config['icadim']; # number of IC's to find (dimension of PCA subspace)
+	
+	#	Performs jade and saves if main
+	coords.flush();
+	icajade = jadeR(filename, mapshape, val, subspace);
+	if __name__ == '__main__' and (val.save): np.save('savefiles/icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
+
+	if val.debug: print 'icajade: ', numpy.shape(icajade);
+
 	#	Performs change of basis
-	icacoffs = icajade.dot(trigdat)
-	icacoffs = numpy.asarray(icacoffs); 
+	icafile = path.join('./.memmapped','icacoffs.array');
+	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icadim'],numsamp) );
+	icacoffs[:,:] = icajade.dot(coords)
+	icacoffs.flush();
+	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
+	if (val.save) and __name__ == '__main__': np.save('savefiles/icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs[:,:]) 
 	
-	if val.debug: print 'icacoffs shape: ', numpy.shape(icacoffs);
-	if (val.save) and __name__ == '__main__': numpy.save('icacoffs%s_%i_.npy' %(config['pname'], config['icadim']), icacoffs)
-	
-	if (val.graph):
+	if val.graph:	
 		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
 		ax.scatter(icacoffs[0,::10], icacoffs[1,::10], icacoffs[2,::10], marker='o', c=[0.6,0.6,0.6]); 
-		print 'First 3-Dimensions of \'icacoffs\'';
+		print 'First 3 Dimensions of Icacoffs';
 		plt.show();
-	
-	#	Saves arrays to a dict and returns
-	icamat = {};
-	icamat['icajade'] = icajade;
-	icamat['icacoffs'] = icacoffs;
-	return icamat;
+
+	#	Returns icajade matrix, ica filename, and the shape.
+	return icajade, icafile, icacoffs.shape;
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
