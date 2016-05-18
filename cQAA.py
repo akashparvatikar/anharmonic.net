@@ -88,7 +88,7 @@ def qaa(config, val):
 		else:
 			map_shape = mmap_concat(map_shape, d, filename);
 
-		mapped = np.memmap(filename, dtype='float64', mode='r+', shape=map_shape);
+		#mapped = np.memmap(filename, dtype='float64', mode='r+', shape=map_shape);
 	
 	#	END FOR -------------------------------------------- END FOR
 
@@ -120,7 +120,7 @@ def qaa(config, val):
 	filename=mapped.filename;
 	mapped.flush();
 
-	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), mapped[:,:]);
+	if val.save and __name__ == '__main__': np.save('savefiles/%s_coords.npy' %(config['pname']), mapped[:,:]);
 	#pdbgen(fulldat, resname, config, val);	#	Not implemented for memmapping
 	del mapped;
 	icajade, icafile, mapshape = jade_calc(config, filename, mapshape, val);
@@ -149,7 +149,7 @@ def minqaa(config, val, fulldat):
 	#pdbgen(fulldat, resname);
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
-#================================================
+#==============================================================================
 def jade_calc(config, filename, mapshape, val):
 
 	dim = 3;

@@ -12,6 +12,7 @@ from jade import *
 import argparse
 import warnings
 import timing
+import os.path as path
 
 #a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(shape,b,filename):
@@ -34,6 +35,9 @@ def qaa(config, val):
 	num_traj = config['numOfTraj'];
 	ica_dim = config['icadim'];
 	start_traj = config['startTraj'];
+	filename = path.join('./.memmapped','dihedral_data.array');
+
+	#	Loops through trajectories --------------------------------------------
 	for i in range(start_traj,num_traj+start_traj):
 		#	!Edit to your trajectory format!
 		try:
@@ -53,16 +57,16 @@ def qaa(config, val):
 		trajlen = len(u.trajectory)
 	
 		#	Tailor generateConfig.py for correct for-loop iterations
-		for res in range(1+config['startRes'], config['startRes']+numres-1):
+		for res in range(1+config['startRes'], config['startRes']+numres):
 			#	selection of the atoms involved for the phi angle
-			phi_sel = phisel(u.residues[res])
+			phi_sel = phisel(u.residues[res-1])
 			#	selection of the atoms involved for the psi angle
 			psi_sel = psisel(u.residues[res])
 
 			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
 			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
-		numres = numres-2;
+		useable_res = numres-1;	#	Phi/Psi require a buffer residue to compute
 		#	Computes along whole trajectory
 		phidat.compute(u.trajectory, skip=config['slice_val'])
 		psidat.compute(u.trajectory, skip=config['slice_val'])
@@ -71,21 +75,28 @@ def qaa(config, val):
 		phidat =  array(phidat).reshape(phidat.shape[0],phidat.shape[2]);
 		psidat =  array(psidat).reshape(psidat.shape[0],psidat.shape[2]);
 		
-		"""	Data stored as  | sin(phi) |---
-							| cos(phi) |---
-							| sin(psi) |---
-							| cos(psi) |---"""
+		"""	Data stored as  | sin( phi_(i-1) ) |---
+							| cos( phi_(i-1) ) |---
+							| sin( psi_i )     |---
+							| cos( psi_i )     |---"""
+		didat = np.zeros((4*phidat.shape[0], phidat.shape[1]));
+		didat[0::4,:] = np.sin(phidat);
+		didat[1::4,:] = np.cos(phidat);
+		didat[2::4,:] = np.sin(psidat);
+		didat[3::4,:] = np.cos(psidat);
 
-		dihedral_dat[0::2,:] = phidat
-		dihedral_dat[1::2,:] = phidat
-		
 		if i == start_traj:
-			fulldat = np.memmap('dihedral_data.array', dtype='float64', mode='w+', shape=(numres*2, trajlen/config['slice_val']))
-			fulldat[:,:] = dihedral_dat
+			fulldat = np.memmap(filename, dtype='float64', mode='w+', shape=(useable_res*4, trajlen/config['slice_val']))
+			fulldat[:,:] = didat.astype('float64');
+			map_shape = fulldat.shape;
+			del fulldat;
+			del didat;
 		else:
-			fulldat = mmap_concat(fulldat, dihedral_dat);
+			fulldat = mmap_concat(map_shape, didat, filename);
+	#	End loop --------------------------------------------------------------
 	
-	#	determining % time exhibiting anharmonicity
+
+	#	determining % time exhibiting anharmonicity ---------------------------
 	anharm = np.zeros((2,numres));
 	for i in range(2):
 		for j in range(numres):
@@ -95,13 +106,24 @@ def qaa(config, val):
 			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / fulldat.shape[1];
 
 	if val.save: np.save('savefiles/dih_anharm_%s.npy' %(config['pname']), anharm );
+	#	END ANHARM ------------------------------------------------------------
 
+	fulldat = np.memmap(filename, dtype='float64', mode='r+', shape=map_shape);
+	if val.save and __name__ == '__main__': np.save('savefiles/%s_dihedraldata.npy' %(config['pname']), fulldat[:,:]);
+	del fulldat;
+	
+	icajade, icafile, mapshape = jade_calc(config, filename, map_shape, val);
+	return icajade, icafile, mapshape;
+
+#==============================================================================
 def jade_calc(config, filename, mapshape, val):
 	
 	if val.debug:	
 		avgCoords = numpy.mean(coords, 1); 
 		print avgCoords;
 		print 'avgCoords: ', numpy.shape(avgCoords);
+
+	coords = np.memmap(filename, dtype='float64', mode='r+', shape=mapshape);
 	
 	#==========================================================================	
 	#	Setup to determine proper ICA dimensionality
