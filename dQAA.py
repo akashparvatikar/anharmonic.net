@@ -60,6 +60,7 @@ def qaa(config, val):
 		for res in range(1+config['startRes'], config['startRes']+numres):
 			#	selection of the atoms involved for the phi angle
 			phi_sel = phisel(u.residues[res-1])
+			if val.debug: print res
 			#	selection of the atoms involved for the psi angle
 			psi_sel = psisel(u.residues[res])
 
