@@ -47,7 +47,7 @@ def qaa(config, val):
 		#	!Edit to your trajectory format!
 		try:
 			pdb = "ubq/protein.pdb";
-			dcd = "ubq/pnas2013-native-1-protein-%03.dcd" %(i);
+			dcd = "ubq/pnas2013-native-1-protein-%03i.dcd" %(i);
 
 			u = MDAnalysis.Universe(pdb, dcd, permissive=False);
 
