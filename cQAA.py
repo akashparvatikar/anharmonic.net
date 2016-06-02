@@ -48,6 +48,7 @@ def qaa(config, val):
 		try:
 			u = MDAnalysis.Universe("pentapeptide/init-ww-penta.pdb", "pentapeptide/job%i-protein.dcd" %(i), permissive=False);
 		except:
+			if val.debug: print "pentapeptide/init-ww-penta.pdb and pentapeptide/job%i-protein.dcd" %(i);
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
 
