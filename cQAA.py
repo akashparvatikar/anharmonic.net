@@ -101,8 +101,6 @@ def qaa(config, val):
 	trajlen = len(u.trajectory) / slice_val
 
 	if val.debug: print 'num_coords: ', num_coords;
-	
-	del mapped;
 
 	#	Final alignment
 	if num_traj > 1:
