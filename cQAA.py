@@ -60,7 +60,7 @@ def qaa(config, val):
 		except: atom = u.selectAtoms('name CA');
 
 		try: resname = atom.resnames();
-		except: resname = atom.resname
+		except: resname = atom.resnames;
 
 		dt = u.trajectory.dt;
 
