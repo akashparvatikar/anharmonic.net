@@ -46,10 +46,13 @@ def qaa(config, val):
 	for i in range(start_traj,start_traj+num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03.dcd" %(i), permissive=False);
+			pdb = "ubq/protein.pdb";
+			dcd = "ubq/pnas2013-native-1-protein-%03.dcd" %(i);
+
+			u = MDAnalysis.Universe(pdb, dcd, permissive=False);
 
 		except:
-			if val.debug: print "pentapeptide/init-ww-penta.pdb and pentapeptide/job%i-protein.dcd" %(i);
+			if val.debug: print pdb, dcd;
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
 
