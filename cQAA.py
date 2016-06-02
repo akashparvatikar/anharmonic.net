@@ -57,8 +57,8 @@ def qaa(config, val):
 	for i in range(start_traj,start_traj+num_traj):
 		#	!Edit to your trajectory format!
 		try:
-			pdb = "ubq/protein.pdb";
-			dcd = "ubq/pnas2013-native-1-protein-%03i.dcd" %(i);
+			pdb = "pentapeptide/init-ww-penta.pdb";
+			dcd = "pentapeptide/job%i-protein.dcd" %(i);
 
 			u = MDAnalysis.Universe(pdb, dcd, permissive=False);
 
@@ -135,7 +135,7 @@ def qaa(config, val):
 	filename=mapped.filename;
 	mapped.flush();
 
-	if val.save and __name__ == '__main__': np.save('savefiles/%s_coords.npy' %(config['pname']), mapped[:,:]);
+	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), mapped[:,:]);
 	#pdbgen(fulldat, resname, config, val);	#	Not implemented for memmapping
 	del mapped;
 	icajade, icafile, mapshape = jade_calc(config, filename, mapshape, val);
