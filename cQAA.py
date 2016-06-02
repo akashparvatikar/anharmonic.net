@@ -47,7 +47,9 @@ def qaa(config, val):
 		#	!Edit to your trajectory format!
 		try:
 			u = MDAnalysis.Universe("ubq/protein.pdb", "ubq/pnas2013-native-1-protein-%03.dcd" %(i), permissive=False);
+
 		except:
+			if val.debug: print "pentapeptide/init-ww-penta.pdb and pentapeptide/job%i-protein.dcd" %(i);
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
 
@@ -99,10 +101,7 @@ def qaa(config, val):
 	num_atoms = map_shape[2];
 	trajlen = len(u.trajectory) / slice_val
 
-	if val.debug and val.save: np.save('savefiles/%s_full_prealign.npy' %(config['pname']), mapped[:,:,:]);
 	if val.debug: print 'num_coords: ', num_coords;
-	
-	del mapped;
 
 	#	Final alignment
 	if num_traj > 1:
