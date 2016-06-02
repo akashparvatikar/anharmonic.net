@@ -100,7 +100,6 @@ def qaa(config, val):
 	num_atoms = map_shape[2];
 	trajlen = len(u.trajectory) / slice_val
 
-	if val.debug and val.save: np.save('savefiles/%s_full_prealign.npy' %(config['pname']), mapped[:,:,:]);
 	if val.debug: print 'num_coords: ', num_coords;
 	
 	del mapped;
