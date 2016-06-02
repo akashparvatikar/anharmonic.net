@@ -59,7 +59,9 @@ def qaa(config, val):
 		try: atom = u.select_atoms('name CA');
 		except: atom = u.selectAtoms('name CA');
 
-		resname = atom.resnames();
+		try: resname = atom.resnames();
+		except: resname = atom.resname
+
 		dt = u.trajectory.dt;
 
 		if val.debug: print 'dt: ', dt;
