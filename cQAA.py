@@ -56,7 +56,9 @@ def qaa(config, val):
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
 
-		atom = u.selectAtoms('name CA');
+		try: atom = u.select_atoms('name CA');
+		except: atom = u.selectAtoms('name CA');
+
 		resname = atom.resnames();
 		dt = u.trajectory.dt;
 
