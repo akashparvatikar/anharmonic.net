@@ -7,12 +7,23 @@ from KabschAlign import *
 from IterativeMeansAlign import *
 from MDAnalysis.core.Timeseries import *
 from MDAnalysis import *
+import MDAnalysis.version as v
 from numpy import *
 from jade import *
 import timing
 import argparse
 from scipy.stats import kurtosis
 import os.path as path
+
+mdversion = v.__version__;
+tmp = '';
+b = False;
+for i in mdversion:
+	if i == '.': b = not(b);
+	print b;
+	if b: tmp += i;
+tmp = tmp.strip('.');
+assert( int(tmp) >= 11 );
 
 #a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(shape,b,filename):
@@ -56,11 +67,9 @@ def qaa(config, val):
 			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
 			exit();
 
-		try: atom = u.select_atoms('name CA');
-		except: atom = u.selectAtoms('name CA');
+		atom = u.select_atoms('name CA');
 
-		try: resname = atom.resnames();
-		except: resname = atom.resnames;
+		resname = atom.resnames;
 
 		dt = u.trajectory.dt;
 
@@ -72,14 +81,14 @@ def qaa(config, val):
 
 		for ts in u.trajectory:
 			if (counter % config['slice_val'] == 0):
-				f = atom.coordinates();
+				f = atom.positions;
 				cacoords.append(f.T);
 				frames.append(ts.frame);
 			counter = counter + 1;
 
 		if numRes == -1:
-			numRes = atom.numberOfResidues();
-		if atom.numberOfResidues() == numRes:
+			numRes = atom.n_residues;
+		if atom.n_residues == numRes:
 			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4, val.verbose);
 		else:
 			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4, val.verbose);
