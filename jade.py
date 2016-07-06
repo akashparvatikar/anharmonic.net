@@ -41,6 +41,9 @@ from numpy import abs, append, arange, arctan2, argsort, array, concatenate, \
 from numpy.linalg import eig, pinv
 import scipy.io as io
 import numpy as np
+import logging
+
+log = logging.getLogger(__name__);
 
 def get_eigv(X):
 	D, V = eig(X);
@@ -55,7 +58,7 @@ def get_eigv(X):
 	V = V[:,keys];
 	return D, V;
 
-def jadeR(filename, mapshape, val, m=None):
+def jadeR(filename, mapshape, m=None):
     """
     Blind separation of real signals with JADE.
     
@@ -69,15 +72,14 @@ def jadeR(filename, mapshape, val, m=None):
     
     Parameters:
     
-        X -- an nxT data matrix (n sensors, T samples). May be a numpy array or
-             matrix.
+        filename -- filename of the memmapped matrix
+
+        mapshape -- shape of the memmapped matrix
     
         m -- output matrix B has size mxn so that only m sources are
              extracted.  This is done by restricting the operation of jadeR
              to the m first principal components. Defaults to None, in which
              case m=n.
-        
-        val.verbose -- print info on progress. Default is True.
     
     Returns:
     
@@ -118,36 +120,30 @@ def jadeR(filename, mapshape, val, m=None):
     Copyright original Matlab code : Jean-Francois Cardoso <cardoso@sig.enst.fr>
     Copyright Numpy translation : Gabriel Beckers <gabriel@gbeckers.nl>
     """
-    smart_setup = val.smart;
+    smart_setup = False;
     X = np.memmap(filename, dtype='float64', shape=mapshape)
 	
 
     # GB: we do some checking of the input arguments and copy data to new
     # variables to avoid messing with the original input. We also require double
     # precision (float64) and a numpy matrix type for X.
-    assert isinstance(X, ndarray),\
-        "X (input data matrix) is of the wrong type (%s)" % type(X)
-
-    assert X.ndim == 2, "X has %d dimensions, should be 2" % X.ndim
 
     [n,T] = mapshape # GB: n is number of input signals, T is number of samples
-    if val.verbose: print mapshape;
+    log.debug('Shape of Matrix, Pre-ICA: {0}'.format(mapshape));
     if m==None:
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
-        "jade -> Do not ask more sources (%d) than sensors (%d )here!!!" % (m,n)
+        log.error('jade -> Do not ask more sources ({0}) than sensors ({1})here!!!'.format(m,n));
     #np.save('premean.npy', X);  # Debugging help -- Gabe V
-    if val.verbose:
-        print >> stdout, "jade -> Looking for %d sources" % m
-        print >> stdout, "jade -> Removing the mean value"
+    log.info('jade -> Looking for {0} sources'.format(m));
+    log.info('jade -> Removing the mean value');
     xmean = X.mean(axis = 1).reshape((n,1));
     X[:,:] = X - (xmean.dot( np.ones((1,T)) )).astype('float64');
     X.flush();
     #np.save('zeromean.npy', X);  # Debugging help -- Gabe V
     # whitening & projection onto signal subspace
     # ===========================================
-    if val.verbose:
-        print >> stdout, "jade -> Whitening the data"
+    log.info('jade -> Whitening the data');
     [D,U] = get_eigv((X.dot(X.T)) / float(T)) # An eigen basis for the sample covariance matrix
     k = D.argsort()
     Ds = D[k] # Sort by increasing variances
@@ -167,7 +163,7 @@ def jadeR(filename, mapshape, val, m=None):
     #np.save('eigv.npy', U);  # Debugging help -- Gabe V
     #np.save('eigval.npy', D);  # Debugging help -- Gabe V
     #np.save('whitener.npy', B);  # Debugging help -- Gabe V
-    if val.debug and val.save: np.save('savefiles/whitened.npy', X[:,:]);  # Debugging help -- Gabe V
+    #np.save('savefiles/whitened.npy', X[:,:]);  # Debugging help -- Gabe V
 
     del U, D, Ds, k, PCs, scales; 
     
@@ -186,8 +182,7 @@ def jadeR(filename, mapshape, val, m=None):
     
     # Estimation of the cumulant matrices.
     # ====================================
-    if val.verbose:
-        print >> stdout, "jade -> Estimating cumulant matrices"
+    log.info('jade -> Estimating cumulant matrices');
     
     # Reshaping of the data, hoping to speed up things a little bit...
     dimsymm = (m * ( m + 1)) / 2	# Dim. of the space of real symm matrices
@@ -225,7 +220,7 @@ def jadeR(filename, mapshape, val, m=None):
     #	Setup for joing diag
     #	"smart setup" from matlab (diagonalizes a single cumulant tensor)  
     if (smart_setup):
-        if val.verbose: print( "Executing \'Smart Setup\'..." );
+        log.info('Executing \'Smart Setup\'...');
         D,V = get_eigv(CM[:,:m]);
         #np.save('smart_eigv.npy', V);
         #np.save('smart_eigval.npy', D);
@@ -262,13 +257,11 @@ def jadeR(filename, mapshape, val, m=None):
     
     # Joint diagonalization proper
     #np.save('cm.npy', CM);  # Debugging help -- Gabe V
-    if val.verbose:
-        print >> stdout, "jade -> Contrast optimization by joint diagonalization"
+    log.info('jade -> Contrast optimization by joint diagonalization');
     
     while encore:
         encore = False
-        if val.verbose:
-            print >> stdout, "jade -> Sweep #%3d" % sweep ,
+        log.info('jade -> Sweep #{:03d}'.format(sweep));
         sweep = sweep + 1
         upds  = 0
         Vkeep = V
@@ -302,11 +295,9 @@ def jadeR(filename, mapshape, val, m=None):
                     On = On + Gain
                     Off = Off - Gain
                     
-        if val.verbose:
-            print >> stdout, "completed in %d rotations" % upds
+        log.info('jade -> Completed in {0} rotations'.format(upds));
         updates = updates + upds
-    if val.verbose:
-        print >> stdout, "jade -> Total of %d Givens rotations" % updates
+    log.info('jade -> Total of {0} Givens rotations'.format(updates));
     
     # A separating matrix
     # ===================
@@ -316,8 +307,7 @@ def jadeR(filename, mapshape, val, m=None):
     # Here the **signals** are normalized to unit variance.  Therefore, the sort is
     # according to the norm of the columns of A = pinv(B)
 
-    if val.verbose:
-        print >> stdout, "jade -> Sorting the components"
+    log.info('jade -> Sorting the components');
     
     A = pinv(B)
     #np.save('a.npy', A);  # Debugging help -- Gabe V
@@ -326,13 +316,12 @@ def jadeR(filename, mapshape, val, m=None):
     B = B[::-1,:]     # % Is this smart ?
     #np.save('B.npy', B);  # Debugging help -- Gabe V
     
-    if val.verbose:
-        print >> stdout, "jade -> Fixing the signs"
+    log.info('jade -> Fixing the signs');
     b	= B[:,0]
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     B = diag(signs) * B
     
-    if val.debug and val.save: np.save('savefiles/icajade_debug.npy', B);  # Debugging help -- Gabe V
+    #np.save('savefiles/icajade_debug.npy', B);  # Debugging help -- Gabe V
     return B;
     
     
@@ -459,8 +448,4 @@ def jadeR(filename, mapshape, val, m=None):
     # Note 2) A test module that compares NumPy output with Octave (MATLAB
     # clone) output of the original MATLAB script is available
 if __name__ == '__main__':
-		
-	#a = np.load('coords_awq.npy');
-	jadeR(a, m=60, smart_setup=True);
-	#modify to your coordinate file if interested
-	
+    #DONT put stuff here!

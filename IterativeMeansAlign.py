@@ -4,9 +4,11 @@ import numpy.linalg
 import math
 from KabschAlign import *
 import numpy as np
-
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+import logging
+
+log = logging.getLogger(__name__);
 
 class IterativeMeansAlign(object):
 	
@@ -15,7 +17,7 @@ class IterativeMeansAlign(object):
 		Constructor
 		"""
 
-	def iterativeMeans(self, coords, eps, maxIter, verbose, mapped=False, fname='na',shape=[0,0,0]):
+	def iterativeMeans(self, coords, eps, maxIter, mapped=False, fname='na',shape=[0,0,0]):
 
 		if mapped:
 			coords = np.memmap(fname, dtype='float64', mode='r+').reshape(shape) 
@@ -25,11 +27,10 @@ class IterativeMeansAlign(object):
 		# This file has been edited to produce identical results as the original matlab implementation.
 
 		Ns = numpy.shape(coords)[0];
-		if (verbose): print Ns; 
 		dim = numpy.shape(coords)[1];
-		if (verbose): print dim;
 		Na = numpy.shape(coords)[2];
-		if (verbose): print Na;
+		
+		log.debug('Shape of array in IterativeMeans: {0}'.format(numpy.shape(coords)));
 		
 		avgCoords = [];			# track average coordinates
 		kalign = KabschAlign();		# initialize for use
@@ -48,23 +49,15 @@ class IterativeMeansAlign(object):
 			avgCoords.append(mnC);
 			for i in range(0,Ns):
 				fromXYZ = coords[i];
-				"""ax.plot(coords[i,0], coords[i,1], coords[i,2]);
-				ax.set_title('pre %i' %(i));
-				plt.show();
-				plt.cla();"""
 				[R, T, xRMSD, err] = kalign.kabsch(mnC, fromXYZ);
 				tmpRMSD.append(xRMSD); 
 				tmp = numpy.tile(T.flatten(), (Na,1)).T;
 				pxyz = numpy.dot(R,fromXYZ) + tmp;  
-				coords[i,:,:] = pxyz;"""
-				ax.plot(coords[i,0], coords[i,1], coords[i,2]);
-				ax.set_title('post %i' %(i));
-				plt.show();
-				plt.cla();"""
+				coords[i,:,:] = pxyz;
 			eRMSD.append(numpy.array(tmpRMSD).T);
 			newMnC = numpy.mean(coords,0); 
 			err = math.sqrt(sum( (mnC.flatten()-newMnC.flatten())**2) )
-			if (verbose): print("Iteration #%i with an error of %f" %(itr, err))
+			log.info('Iteration #{0} with an error of {1}'.format(itr, err))
 			if err <= eps or itr == maxIter:
 				ok = 1;
 			itr = itr + 1;

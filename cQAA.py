@@ -10,10 +10,11 @@ from MDAnalysis import *
 import MDAnalysis.version as v
 from numpy import *
 from jade import *
-import timing
 import argparse
 from scipy.stats import kurtosis
 import os.path as path
+import logging
+import pickle
 
 mdversion = v.__version__;
 tmp = '';
@@ -25,6 +26,9 @@ for i in mdversion:
 tmp = tmp.strip('.');
 assert( int(tmp) >= 11 );
 
+log = logging.getLogger(__name__);
+
+#================================================
 #a is mem-mapped array, b is array in RAM we are adding to a.
 def mmap_concat(shape,b,filename):
 	assert(shape[1] == b.shape[1] and shape[2] == b.shape[2]);
@@ -33,48 +37,50 @@ def mmap_concat(shape,b,filename):
 	newshape = c.shape;	
 	del c;	#	Flushes changes to memory and then deletes.  New array can just be called using filename
 	return newshape;
+#================================================
+
 
 #	Main  Code
 #	||		||
 #	\/		\/
 
 #================================================
-def qaa(config, val):
+def qaa(config):
 
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = [];
-	start_traj = config['startTraj'];
-	num_traj = config['numOfTraj'];
-	startRes = config['startRes'];
-	numRes = config['numRes'];
-	slice_val = config['slice_val'];
-	dim = 3;
-	global dt;
 
+	#	Pull config from config
+	startRes = config['startRes'];
+	endRes = config['endRes'];
+	slice_val = config['slice_val'];
+	trajectories = config['trajectories'];
+	savedir = config['saveDir'];
+	figdir = config['figDir'];
+
+	global dt;
+	dim = 3;
 	filename = path.join('./.memmapped','coord_data.array');
 
 	#----------------------------------------------
-	for i in range(start_traj,start_traj+num_traj):
-		#	!Edit to your trajectory format!
+	count = 0;
+	for traj in trajectories:
+		count+=1;
 		try:
-			pdb = "pentapeptide/init-ww-penta.pdb";
-			dcd = "pentapeptide/job%i-protein.dcd" %(i);
-
+			pdb = config['pdbfile'];
+			dcd = traj;
 			u = MDAnalysis.Universe(pdb, dcd, permissive=False);
 
 		except:
-			if val.debug: print pdb, dcd;
-			raise ImportError('You must edit \'cQAA.py\' to fit your trajectory format!');
-			exit();
+			log.debug('PDB: {0}\nDCD: {1}'.format(pdb, dcd));
+			raise ImportError('You must edit \'config.yaml\' to fit your trajectory format!');
 
 		atom = u.select_atoms('name CA');
-
 		resname = atom.resnames;
-
 		dt = u.trajectory.dt;
 
-		if val.debug: print 'dt: ', dt;
-		if val.verbose: timing.log('Processing Trajectory %i...' %(i+1))
+		log.debug('Time Delta: {0}'.format(dt));
+		log.info('Processing Trajectory {0}...'.format(count));
 
 		counter = 0;
 		cacoords = []; frames = [];
@@ -86,12 +92,7 @@ def qaa(config, val):
 				frames.append(ts.frame);
 			counter = counter + 1;
 
-		if numRes == -1:
-			numRes = atom.n_residues;
-		if atom.n_residues == numRes:
-			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,:], 0.150, 4, val.verbose);
-		else:
-			[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes:startRes+numRes], 0.150, 4, val.verbose);
+		[a, b, c, d] = iterAlign.iterativeMeans(array(cacoords)[:,:,startRes-1:endRes], 0.150, 4);
 
 		#	Keeping data		
 		itr.append(a);
@@ -110,21 +111,21 @@ def qaa(config, val):
 	
 	#	END FOR -------------------------------------------- END FOR
 
-	if val.debug: print 'Saved array shape: ', map_shape;
+	log.debug( 'Saved array shape: {0}'.format(map_shape));
 
 	num_coords = map_shape[0];
 	dim = map_shape[1];
 	num_atoms = map_shape[2];
 	trajlen = len(u.trajectory) / slice_val
 
-	if val.debug: print 'num_coords: ', num_coords;
+	log.debug( 'num_coords: {0}'.format(num_coords));
 
 	#	Final alignment
 	if num_traj > 1:
-		[itr, avgCoords, eRMSD, junk ] = iterAlign.iterativeMeans(0, 0.150, 4, val.verbose, mapped=True, fname=filename, shape=map_shape);	
+		[itr, avgCoords, eRMSD, junk ] = iterAlign.iterativeMeans(0, 0.150, 4, mapped=True, fname=filename, shape=map_shape);	
 
-	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
+	log.debug( 'eRMSD shape: {0}'.format(numpy.shape(eRMSD)));
+	np.save(os.path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
 
 	#	Import and reshape
 	mapalign = np.memmap(filename, dtype='float64', mode='r+', shape=((num_coords,dim,num_atoms)) );
@@ -135,13 +136,15 @@ def qaa(config, val):
 	filename=mapped.filename;
 	mapped.flush();
 
-	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), mapped[:,:]);
+	np.save(os.path.join(savedir, '{0}_coords.npy'.format(config['pname'])), mapped[:,:]);
 	#pdbgen(fulldat, resname, config, val);	#	Not implemented for memmapping
 	del mapped;
-	icajade, icafile, mapshape = jade_calc(config, filename, mapshape, val);
+	icajade, icafile, mapshape = jade_calc(config, filename, mapshape);
 	return icajade, icafile, mapshape;
-#================================================ (Not memmapped as of yet)
-def minqaa(config, val, fulldat):
+#================================================
+
+"""#============================================= (Not memmapped as of yet, don't use)
+def minqaa(config, fulldat):
 	#	Setup
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = [];
@@ -152,21 +155,48 @@ def minqaa(config, val, fulldat):
 	num_atoms = fulldat.shape[2];
 	
 	#	Final averaging
-	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4, val.verbose);	
+	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
 	
-	if val.debug: print 'eRMSD shape: ', numpy.shape(eRMSD);
-	if val.save: np.save('savefiles/%s_eRMSD.npy' %(config['pname']), eRMSD );
+	log.debug( 'eRMSD shape: {0}'.format(numpy.shape(eRMSD)) );
+	np.save(os.path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
 	
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
-	if val.save: np.save('savefiles/%s_coords.npy' %(config['pname']), coords)
+	np.save(os.path.join(savedir, '{0}_coords.npy'.format(config['pname'])), coords);
 	#pdbgen(fulldat, resname);
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
-#==============================================================================
-def jade_calc(config, filename, mapshape, val):
+#================================================"""
 
+#================================================
+def genCumSum(config, pcas, pcab):
+	si = numpy.argsort(-pcas.ravel());
+	pcaTmp = pcas;
+	pcas = numpy.diag(pcas);
+	pcab = pcab[:,si];
+	
+	fig = plt.figure();
+	ax = fig.add_subplot(111);
+	y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
+	ax.plot(y*100);
+	ax.set_xlabel('Number of Principal Components');
+	ax.set_ylabel('Percent of Total Variance Preserved');
+	ax.set_title('Variance of Principal Components');
+
+	pickle.dump(fig, file(os.path.join(figdir, '{0}_cumsum.pickle'.format(config['pname'])), 'w') );
+	plt.savefig(os.path.join(figdir, '{0}_cumsum.png'.format(config['pname'])));
+
+	if config['setup']:
+		log.info('Cov. Matrix spectrum cum. sum:');
+		plt.show();
+		a = input('Enter desired ICA dimension (enter -1 for default): ');
+		if (a > 0):
+			config['icadim'] = a;
+#================================================
+
+#================================================
+def jade_calc(config, filename, mapshape):
 	dim = 3;
 	numres = mapshape[0]/dim;
 	numsamp = mapshape[1];
@@ -180,44 +210,87 @@ def jade_calc(config, filename, mapshape, val):
 			median = np.median(tmp);
 			stddev = np.std(tmp);
 			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / mapshape[1];
-	if val.save: np.save('savefiles/coord_anharm_%s.npy' %(config['pname']), anharm );
+	np.save(os.path.join(savedir, 'coord_anharm_{0}.npy'.format(config['pname'])), anharm );
+	log.debug( 'coords: {0}'.format(numpy.shape(coords)));
+
+	#	Plots (if `setup`) Cum. Sum of Variance in PC's
+	[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
+	genCumSum(config, pcas, pcab);
+
+	# some set up for running JADE
+	subspace = config['icadim']; # number of IC's to find (dimension of PCA subspace)
 	
-	if val.debug: print 'coords: ', numpy.shape(coords); 
+	#	Performs jade and saves if main
+	coords.flush();
+	icajade = jadeR(filename, mapshape, subspace);
+	np.save(os.path.join(savedir, '{0}_icajade_{1}dim.npy'.format(config['pname'], config['icadim'])), icajade); 
+	log.debug('icajade: {0}'.format(numpy.shape(icajade)));
+
+	#	Performs change of basis
+	icafile = path.join('./.memmapped','icacoffs.array');
+	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icadim'],numsamp) );
+	icacoffs[:,:] = icajade.dot(coords)
+	icacoffs.flush();
+	log.debug('icacoffs: {0}'.format(numpy.shape(icacoffs)));
+	np.save(os.path.join(savedir, '{0}_icacoffs_{1}dim.npy'.format(config['pname'], config['icadim'])), icacoffs[:,:]) 
 	
-	if val.debug:	
-		avgCoords = numpy.mean(coords, 1); 
-		print avgCoords;
-		print 'avgCoords: ', numpy.shape(avgCoords);
+	fig = plt.figure();
+	ax = fig.add_subplot(111, projection='3d');
+	ax.scatter(icacoffs[0,::10], icacoffs[1,::10], icacoffs[2,::10], marker='o', c=[0.6,0.6,0.6]);
+
+	#	Saves figure object to pickle, saves figure plot to png
+	pickle.dump(fig, file(os.path.join(savedir, '{0}_icacoffs_scatter.pickle'.format(config['pname'])), 'w') );
+	plt.savefig(os.path.join(savedir, '{0}_icacoffs_scatter.png'.format(config['pname'])));
 	
-	#==========================================================================	
-	#	Setup to determine proper ICA dimensionality
-	if val.setup:
-		[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
-		si = numpy.argsort(-pcas.ravel());
-		pcaTmp = pcas;
-		pcas = numpy.diag(pcas);
-		pcab = pcab[:,si];
-		
-		fig = plt.figure();
-		ax = fig.add_subplot(111);
-		y = numpy.cumsum(pcaTmp.ravel()/numpy.sum(pcaTmp.ravel()));
-		ax.plot(y*100);
-		ax.set_xlabel('Number of Principal Components');
-		ax.set_ylabel('Percent of Total Variance Preserved');
-		ax.set_title('Variance of Principal Components');
-		if val.verbose: print('Cov. Matrix spectrum cum. sum.');
+	#	If in CLI and graph flag
+	if config['graph']:
+		log.info('First 3 Dimensions of Icacoffs');
 		plt.show();
-		a = input('Enter desired ICA dimension (enter -1 for default): ');
-		if (a > 0):
-			config['icadim'] = a;
-	#	End ICA Setup
-	#==========================================================================
+
+	#	Returns icajade matrix, ica filename, and the shape.
+	return icajade, icafile, icacoffs.shape;
+#================================================
+
+#================================================
+"""
+    INPUT:
+    fulldat     = atom coordinates      -- size [NumAtoms, 3, NumRes];
+    atomname    = list of atom names    -- length NumRes
+    resname     = list of residuee names-- length NumRes
+    elementname = list of element names -- length NumRes
+    filename    = filename to save to: e.g. 'filename.pdb'
+    verbose     = boolean to  
+"""
+
+def pdbgen(fulldat, atomname, resname, filename, verbose):
+	
+    numatom, dim, numres = fulldat.shape;
+    assert ( len(atomname) == numres );
+    assert ( len(resname) == numres );
+    assert ( len(elementname) == numres );
+
+	if verbose: print 'Constructing PDB file...';
+	f = open('savefiles/%s.pdb' %(filename), 'w+');
+	for i in range(fulldat.shape[0]):
+		f.write('%-6s    %4i\n' %('MODEL', i+1));
+		for j in range(fulldat.shape[2]):
+			f.write('%-6s%5i %4s %s  %4i    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s  \n' \
+				%('ATOM', j+1, atomname[j], resname[j], j+1, fulldat[i,0,j], fulldat[i,1,j], fulldat[i,2,j], 0.0, 0.0, elementname[j]));
+		f.write('ENDMDL\n');
+	f.close();
+	if verbose: print 'PDB file completed!';
+
+#================================================
+
+if __name__ == '__main__':
+
+#	Code in progress:
+
 	
 	"""#==========================================================================	
 	#	Kurtosis Sliding Window Computation
 
-	if val.verbose: timing.log('Computing kurtosis...');
-	#	coords = 3*numRes x numSamples
+		#	coords = 3*numRes x numSamples
 	window = config['kurtosis_window'];
 	kurt = [];
 	#dt = u.trajectory.dt; #	Time Delta btwn. frames
@@ -229,94 +302,16 @@ def jade_calc(config, filename, mapshape, val):
 	W = lambda k: alpha*np.exp(-(window-k)*tao**-1);
 	weights = map(W, weights);
 	
-	if val.debug: print np.sum(weights);
+	log.debug( 'Sum of the weights: {0}'.format(np.sum(weights)));
 
 	for i in range(window, coords.shape[1]):
 		kurt.append(np.mean(kurtosis(coords[:,i-window:i].dot(np.diag(weights)), axis=1)));
 	
 	if val.save: np.save('savefiles/%s_kurtosis.npy' %(config['pname']), np.array(kurt));
-	if val.verbose: timing.log('Kurtosis computed -- moving to JADE...');
 
 	#	End Kurtosis
 	#========================================================================== IN PROGRESS"""	
 
-	# some set up for running JADE
-	subspace = config['icadim']; # number of IC's to find (dimension of PCA subspace)
-	
-	#	Performs jade and saves if main
-	print 'val.smart: ', val.smart;
-	coords.flush();
-	icajade = jadeR(filename, mapshape, val, subspace);
-	if __name__ == '__main__' and (val.save): np.save('savefiles/icajade_%s_%i.npy' %(config['pname'], config['icadim']), icajade) 
-
-	if val.debug: print 'icajade: ', numpy.shape(icajade);
-
-	#	Performs change of basis
-	icafile = path.join('./.memmapped','icacoffs.array');
-	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icadim'],numsamp) );
-	icacoffs[:,:] = icajade.dot(coords)
-	icacoffs.flush();
-	if val.debug: print 'icacoffs: ', numpy.shape(icacoffs);
-	if (val.save) and __name__ == '__main__': np.save('savefiles/icacoffs_%s_%i.npy' %(config['pname'], config['icadim']), icacoffs[:,:]) 
-	
-	if val.graph:	
-		fig = plt.figure();
-		ax = fig.add_subplot(111, projection='3d');
-		ax.scatter(icacoffs[0,::10], icacoffs[1,::10], icacoffs[2,::10], marker='o', c=[0.6,0.6,0.6]); 
-		print 'First 3 Dimensions of Icacoffs';
-		plt.show();
-
-	#	Returns icajade matrix, ica filename, and the shape.
-	return icajade, icafile, icacoffs.shape;
-
-#================================================
-
-def pdbgen(fulldat, resname, config, val):
-	
-	if val.verbose: print 'Constructing PDB file...';
-	f = open('savefiles/%s.pdb' %(config['pname']), 'w+');
-	for i in range(fulldat.shape[0]):
-		f.write('%-6s    %4i\n' %('MODEL', i+1));
-		for j in range(fulldat.shape[2]):
-			f.write('%-6s%5i  CA  %s  %4i    %8.3f%8.3f%8.3f%6.2f%6.2f           C  \n' \
-				%('ATOM', j+1, resname[j], j+1, fulldat[i,0,j], fulldat[i,1,j], fulldat[i,2,j], 0.0, 0.0));
-		f.write('ENDMDL\n');
-	f.close();
-	if val.verbose: print 'PDB file completed!';
-
-#================================================
-
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-g', action='store_true', dest='graph', default=False, help='Shows graphs.')
-	parser.add_argument('-v', action='store_true', dest='verbose', default=False, help='Runs program verbosely.')
-	parser.add_argument('-s', '--save', action='store_true', dest='save', default=False, help='Saves important matrices.')
-	parser.add_argument('-d', '--debug', action='store_true', dest='debug', default=False, help='Prints debugging help.')
-	parser.add_argument('--setup', action='store_true', dest='setup', default=False, help='Runs setup calculations: Cum. Sum. of cov. spectrum\nand unit radius neighbor search.')
-	parser.add_argument('-i', '--input', type=str, dest='coord_in', default='null', help='Allows direct inclusion of an array of coordinates. Input as [numRes, 3, numSamp].')
-	parser.add_argument('--single', action='store_true', dest='single', default=False, help='Runs jade w/ single precision. NOT recommended.')
-	parser.add_argument('--smart', action='store_true', dest='smart', default=False, help='Runs jade using an alternative diagonalization setup. Refer to Cardoso\'s code for more details.')
-
-	values = parser.parse_args()
-	if values.debug: values.verbose = True;
-
-#	Config settings -- only here if cQAA is called directly from python
-	config = {};
-	config['numOfTraj'] = 10;
-	config['startTraj'] = 0;
-	config['icadim'] = 60;
-	config['pname'] = 'mapped_test_ubq';	#	Edit to fit your protein name
-	config['startRes'] = 0;
-
-	config['numRes']=-1;
-	config['slice_val'] = 1;
-	config['kurtosis_window'] = 100;
-	if (values.coord_in == 'null'):
-		qaa(config, values);
-	else:
-		minqaa(config, values, np.load(values.coord_in)); 
-
-#	Not sure how much to keep right now:
 """
 	if val.graph:
 		tmp = numpy.reshape(numpy.tile(avgCoords, num_coords), (num_coords,-1)).T;
@@ -345,8 +340,8 @@ if __name__ == '__main__':
 	
 	
 		#print 'Mean: ', gm;
-		if val.verbose: print 'Std. dev: ', gs;
-		if val.verbose: print 'Kurtosis: ', gK;
+		print 'Std. dev: ', gs;
+		print 'Kurtosis: ', gK;
 		
 		cc = coords[:,0]; print numpy.shape(cc);
 		#print numpy.shape(coords[0:-1:3,0]), numpy.shape(coords[1:-1:3,0]), numpy.shape(coords[2:-1:3,0]);
@@ -357,12 +352,10 @@ if __name__ == '__main__':
 		print 'fig2'
 		plt.show();
 		
-		if val.debug: print numpy.shape(numpy.cov(coords));
 		numpy.save('cov_ca.npy', numpy.cov(coords));
 		[pcas,pcab] = numpy.linalg.eigh(numpy.cov(coords));
 		#numpy.save('pcab_ca.npy', pcab);
-		if val.debug: print pcas.shape, pcab.shape
-		if val.verbose: print 'pcas: ', pcas
+		print 'pcas: ', pcas
 		si = numpy.argsort(-pcas.ravel()); print si;
 		pcaTmp = pcas;
 		pcas = numpy.diag(pcas);
@@ -377,7 +370,6 @@ if __name__ == '__main__':
 		fig = plt.figure();
 		ax = fig.add_subplot(111, projection='3d');
 		pcacoffs = numpy.dot(pcab.conj().T, caDevsMD);
-		if val.debug: print numpy.shape(pcacoffs);
 		ax.scatter(pcacoffs[0,:], pcacoffs[1,:], pcacoffs[2,:], marker='o', c=[0.6,0.6,0.6]);
 		print 'fig4';
 		plt.show();

@@ -1,0 +1,13 @@
+analysis: 'coordinate'
+pdbfile: 'protein.pdb'
+dcdform:
+    - 'ubq/pnas2013-native-1-protein-***.dcd'
+    - '1-10'
+pname: 'ubq'
+startRes: 0
+endRes: 76
+icaDim: 30
+sliceVal: 10
+saveDir: 'savefiles/'
+logfile: 'log.txt'
+figDir: 'savefiles/figures/'
