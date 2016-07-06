@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import logging
 
 log = logging.getLogger(__name__);
+log.setLevel(logging.DEBUG);
 
 class IterativeMeansAlign(object):
 	

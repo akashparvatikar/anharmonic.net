@@ -21,12 +21,12 @@ tmp = '';
 b = False;
 for i in mdversion:
 	if i == '.': b = not(b);
-	print b;
 	if b: tmp += i;
 tmp = tmp.strip('.');
 assert( int(tmp) >= 11 );
 
 log = logging.getLogger(__name__);
+log.setLevel(logging.DEBUG);
 
 #================================================
 #a is mem-mapped array, b is array in RAM we are adding to a.
@@ -53,7 +53,7 @@ def qaa(config):
 	#	Pull config from config
 	startRes = config['startRes'];
 	endRes = config['endRes'];
-	slice_val = config['slice_val'];
+	sliceVal = config['sliceVal'];
 	trajectories = config['trajectories'];
 	savedir = config['saveDir'];
 	figdir = config['figDir'];
@@ -86,7 +86,7 @@ def qaa(config):
 		cacoords = []; frames = [];
 
 		for ts in u.trajectory:
-			if (counter % config['slice_val'] == 0):
+			if (counter % config['sliceVal'] == 0):
 				f = atom.positions;
 				cacoords.append(f.T);
 				frames.append(ts.frame);
@@ -98,7 +98,7 @@ def qaa(config):
 		itr.append(a);
 		avgCoords.append(b[-1]);
 		eRMSD.append(c);
-		if i == start_traj:
+		if count == 1:
 			mapped = np.memmap(filename, dtype='float64', mode='w+', shape=d.shape);
 			mapped[:,:,:] = d.astype('float64');
 			map_shape = mapped.shape;
@@ -116,12 +116,12 @@ def qaa(config):
 	num_coords = map_shape[0];
 	dim = map_shape[1];
 	num_atoms = map_shape[2];
-	trajlen = len(u.trajectory) / slice_val
+	trajlen = len(u.trajectory) / sliceVal
 
 	log.debug( 'num_coords: {0}'.format(num_coords));
 
 	#	Final alignment
-	if num_traj > 1:
+	if len(trajectories) > 1:
 		[itr, avgCoords, eRMSD, junk ] = iterAlign.iterativeMeans(0, 0.150, 4, mapped=True, fname=filename, shape=map_shape);	
 
 	log.debug( 'eRMSD shape: {0}'.format(numpy.shape(eRMSD)));
@@ -264,10 +264,10 @@ def jade_calc(config, filename, mapshape):
 
 def pdbgen(fulldat, atomname, resname, filename, verbose):
 	
-    numatom, dim, numres = fulldat.shape;
-    assert ( len(atomname) == numres );
-    assert ( len(resname) == numres );
-    assert ( len(elementname) == numres );
+	numatom, dim, numres = fulldat.shape;
+	assert ( len(atomname) == numres );
+	assert ( len(resname) == numres );
+	assert ( len(elementname) == numres );
 
 	if verbose: print 'Constructing PDB file...';
 	f = open('savefiles/%s.pdb' %(filename), 'w+');

@@ -44,6 +44,7 @@ import numpy as np
 import logging
 
 log = logging.getLogger(__name__);
+log.setLevel(logging.DEBUG);
 
 def get_eigv(X):
 	D, V = eig(X);
@@ -447,5 +448,3 @@ def jadeR(filename, mapshape, m=None):
     #
     # Note 2) A test module that compares NumPy output with Octave (MATLAB
     # clone) output of the original MATLAB script is available
-if __name__ == '__main__':
-    #DONT put stuff here!
