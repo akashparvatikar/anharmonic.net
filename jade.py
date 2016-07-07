@@ -43,7 +43,7 @@ import scipy.io as io
 import numpy as np
 import logging
 
-log = logging.getLogger(__name__);
+log = logging.getLogger('main.jade');
 log.setLevel(logging.DEBUG);
 
 def get_eigv(X):
@@ -262,7 +262,6 @@ def jadeR(filename, mapshape, m=None):
     
     while encore:
         encore = False
-        log.info('jade -> Sweep #{:03d}'.format(sweep));
         sweep = sweep + 1
         upds  = 0
         Vkeep = V
@@ -296,7 +295,7 @@ def jadeR(filename, mapshape, m=None):
                     On = On + Gain
                     Off = Off - Gain
                     
-        log.info('jade -> Completed in {0} rotations'.format(upds));
+        log.info('jade -> Sweep #{:03}, completed in {} rotations'.format(sweep, upds));
         updates = updates + upds
     log.info('jade -> Total of {0} Givens rotations'.format(updates));
     

@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import logging
 
-log = logging.getLogger(__name__);
+log = logging.getLogger('main.IterativeMeansAlign');
 log.setLevel(logging.DEBUG);
 
 class IterativeMeansAlign(object):

@@ -25,7 +25,7 @@ for i in mdversion:
 tmp = tmp.strip('.');
 assert( int(tmp) >= 11 );
 
-log = logging.getLogger(__name__);
+log = logging.getLogger('main.cQAA');
 log.setLevel(logging.DEBUG);
 
 #================================================
@@ -125,7 +125,7 @@ def qaa(config):
 		[itr, avgCoords, eRMSD, junk ] = iterAlign.iterativeMeans(0, 0.150, 4, mapped=True, fname=filename, shape=map_shape);	
 
 	log.debug( 'eRMSD shape: {0}'.format(numpy.shape(eRMSD)));
-	np.save(os.path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
+	np.save(path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
 
 	#	Import and reshape
 	mapalign = np.memmap(filename, dtype='float64', mode='r+', shape=((num_coords,dim,num_atoms)) );
@@ -136,7 +136,7 @@ def qaa(config):
 	filename=mapped.filename;
 	mapped.flush();
 
-	np.save(os.path.join(savedir, '{0}_coords.npy'.format(config['pname'])), mapped[:,:]);
+	np.save(path.join(savedir, '{0}_coords.npy'.format(config['pname'])), mapped[:,:]);
 	#pdbgen(fulldat, resname, config, val);	#	Not implemented for memmapping
 	del mapped;
 	icajade, icafile, mapshape = jade_calc(config, filename, mapshape);
@@ -158,12 +158,12 @@ def minqaa(config, fulldat):
 	[itr, avgCoords, eRMSD, fulldat ] = iterAlign.iterativeMeans(fulldat, 0.150, 4);	
 	
 	log.debug( 'eRMSD shape: {0}'.format(numpy.shape(eRMSD)) );
-	np.save(os.path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
+	np.save(path.join(savedir, '{0}_eRMSD.npy'.format(config['pname'])), eRMSD );
 	
 	#	Reshaping of coords
 	coords = fulldat.reshape((fulldat.shape[0],-1), order='F').T
 
-	np.save(os.path.join(savedir, '{0}_coords.npy'.format(config['pname'])), coords);
+	np.save(path.join(savedir, '{0}_coords.npy'.format(config['pname'])), coords);
 	#pdbgen(fulldat, resname);
 	jade_calc(config, coords, val, avgCoords, num_coords);
 
@@ -171,6 +171,9 @@ def minqaa(config, fulldat):
 
 #================================================
 def genCumSum(config, pcas, pcab):
+	savedir = config['saveDir'];
+	figdir = config['figDir'];
+
 	si = numpy.argsort(-pcas.ravel());
 	pcaTmp = pcas;
 	pcas = numpy.diag(pcas);
@@ -184,15 +187,15 @@ def genCumSum(config, pcas, pcab):
 	ax.set_ylabel('Percent of Total Variance Preserved');
 	ax.set_title('Variance of Principal Components');
 
-	pickle.dump(fig, file(os.path.join(figdir, '{0}_cumsum.pickle'.format(config['pname'])), 'w') );
-	plt.savefig(os.path.join(figdir, '{0}_cumsum.png'.format(config['pname'])));
+	pickle.dump(fig, file(path.join(figdir, '{0}_cumsum.pickle'.format(config['pname'])), 'w') );
+	plt.savefig(path.join(figdir, '{0}_cumsum.png'.format(config['pname'])));
 
 	if config['setup']:
 		log.info('Cov. Matrix spectrum cum. sum:');
 		plt.show();
 		a = input('Enter desired ICA dimension (enter -1 for default): ');
 		if (a > 0):
-			config['icadim'] = a;
+			config['icaDim'] = a;
 #================================================
 
 #================================================
@@ -201,6 +204,8 @@ def jade_calc(config, filename, mapshape):
 	numres = mapshape[0]/dim;
 	numsamp = mapshape[1];
 	coords = np.memmap(filename, dtype='float64', shape=mapshape)
+	savedir = config['saveDir'];
+	figdir = config['figDir'];
 
 	#	Stats to determine % of time exhibiting anharmonicity
 	anharm = np.zeros((3,numres));
@@ -210,7 +215,7 @@ def jade_calc(config, filename, mapshape):
 			median = np.median(tmp);
 			stddev = np.std(tmp);
 			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / mapshape[1];
-	np.save(os.path.join(savedir, 'coord_anharm_{0}.npy'.format(config['pname'])), anharm );
+	np.save(path.join(savedir, 'coord_anharm_{0}.npy'.format(config['pname'])), anharm );
 	log.debug( 'coords: {0}'.format(numpy.shape(coords)));
 
 	#	Plots (if `setup`) Cum. Sum of Variance in PC's
@@ -218,29 +223,29 @@ def jade_calc(config, filename, mapshape):
 	genCumSum(config, pcas, pcab);
 
 	# some set up for running JADE
-	subspace = config['icadim']; # number of IC's to find (dimension of PCA subspace)
+	subspace = config['icaDim']; # number of IC's to find (dimension of PCA subspace)
 	
 	#	Performs jade and saves if main
 	coords.flush();
 	icajade = jadeR(filename, mapshape, subspace);
-	np.save(os.path.join(savedir, '{0}_icajade_{1}dim.npy'.format(config['pname'], config['icadim'])), icajade); 
+	np.save(path.join(savedir, '{0}_icajade_{1}dim.npy'.format(config['pname'], config['icaDim'])), icajade); 
 	log.debug('icajade: {0}'.format(numpy.shape(icajade)));
 
 	#	Performs change of basis
 	icafile = path.join('./.memmapped','icacoffs.array');
-	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icadim'],numsamp) );
+	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icaDim'],numsamp) );
 	icacoffs[:,:] = icajade.dot(coords)
 	icacoffs.flush();
 	log.debug('icacoffs: {0}'.format(numpy.shape(icacoffs)));
-	np.save(os.path.join(savedir, '{0}_icacoffs_{1}dim.npy'.format(config['pname'], config['icadim'])), icacoffs[:,:]) 
-	
+	np.save(path.join(savedir, '{0}_icacoffs_{1}dim.npy'.format(config['pname'], config['icaDim'])), icacoffs[:,:]) 
+
 	fig = plt.figure();
 	ax = fig.add_subplot(111, projection='3d');
 	ax.scatter(icacoffs[0,::10], icacoffs[1,::10], icacoffs[2,::10], marker='o', c=[0.6,0.6,0.6]);
 
 	#	Saves figure object to pickle, saves figure plot to png
-	pickle.dump(fig, file(os.path.join(savedir, '{0}_icacoffs_scatter.pickle'.format(config['pname'])), 'w') );
-	plt.savefig(os.path.join(savedir, '{0}_icacoffs_scatter.png'.format(config['pname'])));
+	pickle.dump(fig, file(path.join(figdir, '{0}_icacoffs_scatter.pickle'.format(config['pname'])), 'w') );
+	plt.savefig(path.join(figdir, '{0}_icacoffs_scatter.png'.format(config['pname'])));
 	
 	#	If in CLI and graph flag
 	if config['graph']:

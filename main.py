@@ -6,7 +6,7 @@ import argparse
 import sys
 import os
 
-log = logging.getLogger(__name__);
+log = logging.getLogger('main');
 log.setLevel(logging.DEBUG);
 
 def getPadVal(string):
