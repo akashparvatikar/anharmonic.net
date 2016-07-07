@@ -28,8 +28,8 @@ This is a valid configuration file, with several entries omitted.  These 4 (or v
 * `analysis` is either `coordinate` or `dihedral`. Period.
 * `pdb` is the PDB filename.
 * `dcdform` contains two entries:
-    1. A string dictating the form of the dcd files, with asterisks filling the numbers (001 --> ***)[^1]
-    2. A string dictating the numbers to span, seperated by a dash: `-` (001 through 010 --> 1-10)[^1]
+    1. A string dictating the form of the dcd files, with asterisks filling the numbers (001 --> ***)<sup>[1](#myfootnote1)</sup>
+    2. A string dictating the numbers to span, seperated by a dash: `-` (001 through 010 --> 1-10)<sup>[1](#myfootnote1)</sup>
 * Instead of `dcdform` you may use `dcdfiles`, in which the correct form to dictate a **small number** of files is:
 ```
 dcdfiles:
@@ -40,7 +40,7 @@ dcdfiles:
 ```
 * `saveDir` dictates the directory to save to.
 
-Of course the rest of the configuration options must be edited, but they are mostly self-explanatory and very protein specific.
+Of course the rest of the configuration options must be edited, but they are mostly self-explanatory and very protein specific.  
 2. Run:
 ```
 $ python main.py --flags
@@ -50,4 +50,4 @@ where `--flags` are your command line flags. (Run `$ python main.py --help` to g
 ###Run my own Datasets (Option 2):
 Navigate to [Anharmonic.net](http://www.anharmonic.net) for an easy, UI based version of wQAA.
 
-[^1]: Note that there is no support for non-padded integers in dcd filenames, as iterated filenames should always be padded.
+<a name="myfootnote1">1</a>: Note that there is no support for non-padded integers in dcd filenames, as iterated filenames should always be padded.
