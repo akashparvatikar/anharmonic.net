@@ -190,7 +190,7 @@ def genCumSum(config, pcas, pcab):
 	pickle.dump(fig, file(path.join(figdir, '{0}_cumsum.pickle'.format(config['pname'])), 'w') );
 	plt.savefig(path.join(figdir, '{0}_cumsum.png'.format(config['pname'])));
 
-	if config['setup']:
+	if 'setup' in config and config['setup']:
 		log.info('Cov. Matrix spectrum cum. sum:');
 		plt.show();
 		a = input('Enter desired ICA dimension (enter -1 for default): ');
@@ -248,7 +248,7 @@ def jade_calc(config, filename, mapshape):
 	plt.savefig(path.join(figdir, '{0}_icacoffs_scatter.png'.format(config['pname'])));
 	
 	#	If in CLI and graph flag
-	if config['graph']:
+	if 'graph' in config and config['graph']:
 		log.info('First 3 Dimensions of Icacoffs');
 		plt.show();
 

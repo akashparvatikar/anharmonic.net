@@ -43,6 +43,36 @@ def getTraj(config):
     config['trajectories'] = trajectories;
     return config;
 
+def main(config):
+
+    fh = logging.FileHandler(config['logfile']);
+    fh.setLevel(logging.DEBUG);
+    fh.setFormatter(formatter);
+    
+    log.addHandler(fh);
+
+    log.info('Saving all files to: {0}'.format(os.path.abspath(config['saveDir'])));
+    
+    #   Add assertions here:
+    assert( config['startRes'] >= 1 );
+    assert( config['endRes'] >= 1 );
+    config['saveDir'] = os.path.abspath(config['saveDir']);
+    assert( os.path.isdir(config['saveDir']) );
+    config['figDir'] = os.path.abspath(config['figDir']);
+    assert( os.path.isdir(config['figDir']) );
+
+    config = getTraj(config);
+
+    config['analysis'] = config['analysis'].lower();
+    if config['analysis'] == 'coordinate':
+        log.info('Running cQAA');
+        c.qaa(config);
+    elif config['analysis'] == 'dihedral':
+        log.info('Running dQAA');
+        d.qaa(config, values);
+    else:
+        raise ValueError('\'analysis\' must be either: \'dihedral\' or \'coordinate\'.');
+
 if __name__ == '__main__':
 
     #   Setup parser
@@ -70,36 +100,19 @@ if __name__ == '__main__':
     level = 30;
     if values.verbose: level = 20;
     elif values.debug: level = 10;
-
-    print level;
-
     config['graph'] = values.graph;
     config['setup'] = values.setup;
 
-    #   Setup logger
+    #   Setup stream logger
     ch = logging.StreamHandler(sys.stdout);
     formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s');
     ch.setLevel(level);
     ch.setFormatter(formatter);
-    
-    fh = logging.FileHandler(config['logfile']);
-    fh.setLevel(logging.DEBUG);
-    fh.setFormatter(formatter);
-    
+
     log.addHandler(ch);
-    log.addHandler(fh);
 
     log.debug('Configuration File:\n'+conf_file);
     log.info('Using Configuration File: {0}'.format(os.path.abspath(values.configpath)));
-    log.info('Saving all files to: {0}'.format(os.path.abspath(config['saveDir'])));
-    
-    #   Add assertions here:
-    assert( config['startRes'] >= 1 );
-    assert( config['endRes'] >= 1 );
-    config['saveDir'] = os.path.abspath(config['saveDir']);
-    assert( os.path.isdir(config['saveDir']) );
-    config['figDir'] = os.path.abspath(config['figDir']);
-    assert( os.path.isdir(config['figDir']) );
 
     if (values.coord_in != 'null'):
         #   Basically just runs JADE
@@ -107,13 +120,4 @@ if __name__ == '__main__':
         log.info('Running JADE on supplied dataset: {0}.'.format(os.path.abspath(values.coord_in)));
         c.minqaa(config, values, np.load(values.coord_in));
     else:
-        config = getTraj(config);
-
-        if config['analysis'] == 'coordinate':
-            log.info('Running cQAA');
-            c.qaa(config);
-        elif config['analysis'] == 'dihedral':
-            log.info('Running dQAA');
-            d.qaa(config, values);
-        else:
-            raise ValueError('\'analysis\' must be either: \'dihedral\' or \'coordinate\'.');
+        main(config);
