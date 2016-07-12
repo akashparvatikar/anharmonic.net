@@ -43,7 +43,7 @@ def getTraj(config):
     config['trajectories'] = trajectories;
     return config;
 
-def main(config):
+def main(config, log):
 
     fh = logging.FileHandler(config['logfile']);
     fh.setLevel(logging.DEBUG);
@@ -120,4 +120,4 @@ if __name__ == '__main__':
         log.info('Running JADE on supplied dataset: {0}.'.format(os.path.abspath(values.coord_in)));
         c.minqaa(config, values, np.load(values.coord_in));
     else:
-        main(config);
+        main(config, log);
