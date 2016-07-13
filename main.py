@@ -23,13 +23,13 @@ def getRange(ran):
 def getTraj(config):
     trajectories = [];
     #   Tries an easy grab of the list of files
-    try:
+    if 'dcdfiles' in config:
         trajectories = config['dcdfiles'];
         for i in trajectories:
-            assert( os.path.isfile(trajectories[i]) );
+            assert( os.path.isfile(i) );
         log.info('Using supplied list of DCD files.');
     #   Defaults to this
-    except:
+    else:
         assert( 'dcdform' in config.keys() );
         a,b = getRange(config['dcdform'][1]);
         padval = getPadVal(config['dcdform'][0]);
@@ -43,9 +43,11 @@ def getTraj(config):
     config['trajectories'] = trajectories;
     return config;
 
-def main(config, log):
+def main(config):
+    log = logging.getLogger('main');
 
     fh = logging.FileHandler(config['logfile']);
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s');
     fh.setLevel(logging.DEBUG);
     fh.setFormatter(formatter);
     
