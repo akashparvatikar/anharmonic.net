@@ -60,7 +60,7 @@ def qaa(config):
 
 	global dt;
 	dim = 3;
-	filename = path.join('./.memmapped','coord_data.array');
+	filename = path.join(savedir,'.memmapped','coord_data.array');
 
 	#----------------------------------------------
 	count = 0;
@@ -129,7 +129,8 @@ def qaa(config):
 
 	#	Import and reshape
 	mapalign = np.memmap(filename, dtype='float64', mode='r+', shape=((num_coords,dim,num_atoms)) );
-	mapped = np.memmap('.memmapped/coord.array', dtype='float64', mode='w+', shape=((dim*num_atoms, num_coords)));
+    newfilename = os.path.join(savedir,'.memmapped','coord.array');
+	mapped = np.memmap(newfilename, dtype='float64', mode='w+', shape=((dim*num_atoms, num_coords)));
 	for i in range(3): mapped[i::3,:] = mapalign[:,i,:].T;
 	
 	mapshape = mapped.shape;
@@ -232,7 +233,7 @@ def jade_calc(config, filename, mapshape):
 	log.debug('icajade: {0}'.format(numpy.shape(icajade)));
 
 	#	Performs change of basis
-	icafile = path.join('./.memmapped','icacoffs.array');
+	icafile = path.join(savedir,'.memmapped','icacoffs.array');
 	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icaDim'],numsamp) );
 	icacoffs[:,:] = icajade.dot(coords)
 	icacoffs.flush();
