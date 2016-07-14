@@ -129,7 +129,7 @@ def qaa(config):
 
 	#	Import and reshape
 	mapalign = np.memmap(filename, dtype='float64', mode='r+', shape=((num_coords,dim,num_atoms)) );
-    newfilename = os.path.join(savedir,'.memmapped','coord.array');
+	newfilename = os.path.join(savedir,'.memmapped','coord.array');
 	mapped = np.memmap(newfilename, dtype='float64', mode='w+', shape=((dim*num_atoms, num_coords)));
 	for i in range(3): mapped[i::3,:] = mapalign[:,i,:].T;
 	
