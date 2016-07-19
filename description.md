@@ -1,6 +1,1 @@
-##wQAA
-wQAA is an analysis tool for Molecular Dynamic protein simulations.  It is currently developed entirely in python.  The current flow consists of:
-* Data Extraction
-* Alignment (Depending on Analysis)
-* Dimensionality Reduction
-while computing statistics along the way.  It provides the option to work in the Dihedral or Coordinate bases, and allows full customization of inputs.
+wQAA is an analysis tool for Molecular Dynamic protein simulations.  It employs the Joint Approximated Diagonalization of Eigen-Matrices [(JADE)](http://perso.telecom-paristech.fr/~cardoso/guidesepsou.html) to exploit the kurtosis of the data and separate functional conformational groupings from a Protein Simulation through a projection into a lower dimensional basis.
