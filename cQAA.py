@@ -49,6 +49,7 @@ def qaa(config):
 
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = [];
+    resnames = [];
 
 	#	Pull config from config
 	startRes = config['startRes'];
@@ -76,7 +77,7 @@ def qaa(config):
 			raise ImportError('You must edit \'config.yaml\' to fit your trajectory format!');
 
 		atom = u.select_atoms('name CA');
-		resname = atom.resnames;
+		resnames.extend[atom.resnames];
 		dt = u.trajectory.dt;
 
 		log.debug('Time Delta: {0}'.format(dt));
@@ -138,7 +139,7 @@ def qaa(config):
 	mapped.flush();
 
 	np.save(path.join(savedir, '{0}_coords.npy'.format(config['pname'])), mapped[:,:]);
-	#pdbgen(fulldat, resname, config, val);	#	Not implemented for memmapping
+	np.save(path.join(savedir, '{0}_resnames.npy'.format(config['pname'])), resnames);
 	del mapped;
 	icajade, icafile, mapshape = jade_calc(config, filename, mapshape);
 	return icajade, icafile, mapshape;
@@ -207,17 +208,6 @@ def jade_calc(config, filename, mapshape):
 	coords = np.memmap(filename, dtype='float64', shape=mapshape)
 	savedir = config['saveDir'];
 	figdir = config['figDir'];
-
-	#	Stats to determine % of time exhibiting anharmonicity
-	anharm = np.zeros((3,numres));
-	for i in range(3):
-		for j in range(numres):
-			tmp = ((coords[i::3,:])[j])
-			median = np.median(tmp);
-			stddev = np.std(tmp);
-			anharm[i,j] = float( np.sum( (np.abs(tmp - median) > 2*stddev) ) ) / mapshape[1];
-	np.save(path.join(savedir, 'coord_anharm_{0}.npy'.format(config['pname'])), anharm );
-	log.debug( 'coords: {0}'.format(numpy.shape(coords)));
 
 	#	Plots (if `setup`) Cum. Sum of Variance in PC's
 	[pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
