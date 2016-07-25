@@ -49,7 +49,6 @@ def qaa(config):
 
 	iterAlign = IterativeMeansAlign();
 	itr = []; avgCoords = []; eRMSD = [];
-    resnames = [];
 
 	#	Pull config from config
 	startRes = config['startRes'];
@@ -76,8 +75,8 @@ def qaa(config):
 			log.debug('PDB: {0}\nDCD: {1}'.format(pdb, dcd));
 			raise ImportError('You must edit \'config.yaml\' to fit your trajectory format!');
 
-		atom = u.select_atoms('name CA');
-		resnames.extend[atom.resnames];
+		atom = u.atoms.CA;
+		resnames = list(atom.resnames);
 		dt = u.trajectory.dt;
 
 		log.debug('Time Delta: {0}'.format(dt));

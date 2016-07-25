@@ -122,4 +122,4 @@ if __name__ == '__main__':
         log.info('Running JADE on supplied dataset: {0}.'.format(os.path.abspath(values.coord_in)));
         c.minqaa(config, values, np.load(values.coord_in));
     else:
-        main(config, log);
+        main(config);
