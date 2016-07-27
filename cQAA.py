@@ -226,6 +226,14 @@ def jade_calc(config, filename, mapshape):
 	icacoffs = np.memmap(icafile, dtype='float64', mode='w+', shape=(config['icaDim'],numsamp) );
 	icacoffs[:,:] = icajade.dot(coords)
 	icacoffs.flush();
+
+    #   Pulls it out of the hidden directory for later use
+    public_icafile = path.join(savedir, '{0}_icacoffs_{1}dim.array'.format(config['pname'],config['icaDim']));
+    publicica = np.memmap(public_icafile, dtype='float64', mode='w+', shape=(config['icaDim'],numsamp) );
+	publicica[:,:] = icacoffs[:,:];
+    publicica.flush();	
+    del publicica;
+
 	log.debug('icacoffs: {0}'.format(numpy.shape(icacoffs)));
 	np.save(path.join(savedir, '{0}_icacoffs_{1}dim.npy'.format(config['pname'], config['icaDim'])), icacoffs[:,:]) 
 
