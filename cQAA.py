@@ -168,13 +168,11 @@ def genCumSum(config, pcas, pcab):
 
 #================================================
 def genKurtosisPlot(config, coords):
-    #   Computing on a tenth of data for speed
-    mapcoords = np.memmap(filename, dtype='float64', 'r', shape=mapshape);
-    mapcoords[:,:] -= np.mean(mapcoords, axis=1).reshape((-1,1));
-    coords = mapcoords[:,::10];
+    mapcoords = np.memmap(filename, 'r', dtype='float64', shape=mapshape);
+    mapcoords[:,:] = mapcoords - np.mean(mapcoords, axis=1).reshape((-1,1));
     
     #   Using Pearson's defn of kurtosis: (Fisher + 3)
-    d = coords.flatten();
+    d = mapcoords.flatten();
     mean    = np.mean(d);
     stddev  = np.std(d);
     kurt    = kurtosis(d, 0, fisher=0);
