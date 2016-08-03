@@ -98,6 +98,7 @@ def qaa(config):
             mapped = np.memmap(filename, dtype='float64', mode='w+', shape=cacoords.shape);
             mapped[:,:,:] = cacoords.astype('float64');
             map_shape = mapped.shape;
+            config['trajLen'] = cacoords.shape[0];
             del mapped;
             del cacoords;
         else:
@@ -167,8 +168,14 @@ def genCumSum(config, pcas, pcab):
 #================================================
 
 #================================================
-def genKurtosisPlot(config, coords):
+def genKurtosisPlot(config, filename, mapshape):
     mapcoords = np.memmap(filename, 'r', dtype='float64', shape=mapshape);
+
+    #   May have to truncate
+    numTraj = mapcoords.shape[1] // config['trajLen'];
+    plotindv = numTraj <= 5;
+    mapcoords = mapcoords[:,:numTraj*config['trajLen']];
+
     mapcoords[:,:] = mapcoords - np.mean(mapcoords, axis=1).reshape((-1,1));
     
     #   Using Pearson's defn of kurtosis: (Fisher + 3)
@@ -187,8 +194,29 @@ def genKurtosisPlot(config, coords):
     ax = fig.gca();
     #   Log-Plot
     ax.semilogy(midpts, values, 'r-', label='{0} Data, Kurtosis: {1}'.format(config['pname'], kurt));
-    ax.semilogy(edges, gauss_curve, 'b-', label='Gaussian Curve, Kurtosis: 3');
-    ax.legend(fontsize=10);
+    #   gauss curve not very useful
+    #ax.semilogy(edges, gauss_curve, 'b-', label='Gaussian Curve, Kurtosis: 3');
+
+    if plotindv:
+        kurtdata = [];
+        scale = mapcoords.shape[0]*config['trajLen'];
+        for i in range(numTraj):
+            kurtdata.append(kurtosis(d[i*scale:(i+1)*scale], 0, fisher=False));
+
+        val, edg, mid = [], [], [];
+        for i in range(numTraj):
+            a, b = np.histogram(d[i*scale:(i+1)*scale], bins=51, normed=1);
+            mpt = (b[1:]+b[:-1])/2.;
+            val.append(a);
+            edg.append(b);
+            mid.append(mpt);
+
+        for i in range(numTraj):
+            ax.semilogy( mid[i], val[i], label='{0} Data, Traj. {1},  Kurtosis: {2}'.format(config['pname'], i+1, kurtdata[i]));
+
+    box = ax.get_position();
+    ax.set_position([box.x0, box.y0+box.height*.2, box.width, box.height*.8]);
+    ax.legend(loc='upper center', bbox_to_anchor=(.5, -.1), fancybox=True, fontsize=8);
     ax.set_title('Plotted Histogram of {0} data (Log y-scale)'.format(config['pname']));
 
     plt.savefig( os.path.join(config['figDir'], '{0}_loghistogram.png'.format(config['pname'])) );
@@ -198,23 +226,8 @@ def genKurtosisPlot(config, coords):
         plt.show();
 
     plt.close();
-    
-    """
-    fig = plt.figure();
-    ax = fig.gca();
-    ax.plot(midpts, values, 'r-', label='{0} Data, Kurtosis: {1}'.format(config['pname'], kurt));
-    ax.plot(edges, gauss_curve, 'b-', label='Gaussian Curve, Kurtosis: 3');
-    ax.legend(fontsize=10);
-    ax.set_title('Plotted Histogram of {0} data'.format(config['pname']));
 
-    plt.savefig( os.path.join(config['figDir'], '{0}_histogram.png'.format(config['pname'])) );
-    pickle.dump( fig, file( os.path.join(config['figDir'], '{0}_histogram.pickle'.format(config['pname'])), 'w+') );
 
-    if 'graph' in config and config['graph']:
-        plt.show();
-
-    plt.close();
-    """
 #================================================
 
 #================================================
@@ -229,6 +242,9 @@ def jade_calc(config, filename, mapshape):
     #    Plots (if `setup`) Cum. Sum of Variance in PC's
     [pcas,pcab] = numpy.linalg.eig(numpy.cov(coords));
     genCumSum(config, pcas, pcab);
+
+    #   Plots Histogram
+    genKurtosisPlot( config, filename, mapshape );
 
     # some set up for running JADE
     subspace = config['icaDim']; # number of IC's to find (dimension of PCA subspace)
