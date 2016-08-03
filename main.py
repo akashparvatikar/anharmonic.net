@@ -56,7 +56,7 @@ def main(config):
     log.info('Saving all files to: {0}'.format(os.path.abspath(config['saveDir'])));
     
     #   Add assertions here:
-    assert( config['startRes'] >= 1 );
+    assert( config['startRes'] >= 0 );
     assert( config['endRes'] >= 1 );
     config['saveDir'] = os.path.abspath(config['saveDir']);
     assert( os.path.isdir(config['saveDir']) );
