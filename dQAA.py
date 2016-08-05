@@ -45,11 +45,11 @@ def mmap_concat(shape,b,filename):
 
 def phisel(res, resid):
 #MDAnalysis' phi_selection requires a segid be present while this doesn't.
-	return res[resid-1].C + res[resid].N + res[resid].CA + res[resid].C
+    return res[resid-1].C + res[resid].N + res[resid].CA + res[resid].C
 
 def psisel(res, resid):
 #MDAnalysis' phi_selection requires a segid be present while this doesn't. 
-	return res[resid].N + res[resid].CA + res[resid].C + res[resid+1].N
+    return res[resid].N + res[resid].CA + res[resid].C + res[resid+1].N
 
 def dqaa(config, val):
 
@@ -63,27 +63,27 @@ def dqaa(config, val):
 
     filename = os.path.join(savedir,'.memmapped','coord_data.array');
 
-	#	Loops through trajectories --------------------------------------------
+    #    Loops through trajectories --------------------------------------------
     count = 0;
-	for traj in trajectories:
+    for traj in trajectories:
         count+=1;
-		#	!Edit to your trajectory format!
-		try:
-			pdb = config['pdbfile'];
+        #    !Edit to your trajectory format!
+        try:
+            pdb = config['pdbfile'];
             dcd = traj;
             u = Universe(pdb, dcd, permissive=False);
-		except:
+        except:
             log.debug('PDB: {0}\nDCD: {1}'.format(pdb, dcd));
             raise ImportError('You must edit \'config.yaml\' to fit your trajectory format!');
 
         protein_residues = u.n_residues;
         
-	
-		phidat = TimeseriesCollection()
-		psidat = TimeseriesCollection()
+    
+        phidat = TimeseriesCollection()
+        psidat = TimeseriesCollection()
 
-		#	Adds each (wanted) residues phi/psi angles to their respective timeseries collections
-		log.info('Processing Trajectory {0}...'.format(count));
+        #    Adds each (wanted) residues phi/psi angles to their respective timeseries collections
+        log.info('Processing Trajectory {0}...'.format(count));
 
         start   = np.max( [startRes, 1] );
         end     = np.min( [endRes, protein_residues - 1] );
@@ -91,57 +91,57 @@ def dqaa(config, val):
         resnames = u.atoms.CA.resnames[start:end];        
 
         numRes  = end - start + 1;
-		for res in range(start, end):
-			#	selection of the atoms involved for the phi angle
-			phi_sel = phisel(u.residues,res);
-			#	selection of the atoms involved for the psi angle
-			psi_sel = psisel(u.residues,res);
+        for res in range(start, end):
+            #    selection of the atoms involved for the phi angle
+            phi_sel = phisel(u.residues,res);
+            #    selection of the atoms involved for the psi angle
+            psi_sel = psisel(u.residues,res);
 
-			phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
-			psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
+            phidat.addTimeseries(Timeseries.Dihedral(phi_sel))
+            psidat.addTimeseries(Timeseries.Dihedral(psi_sel))
 
-		#	Computes along whole trajectory
-		phidat.compute(u.trajectory, skip=config['sliceVal'])
-		psidat.compute(u.trajectory, skip=config['sliceVal'])
-	
-		#	Converts to nd-array and changes from [numRes,1,sliced numSamples] 
+        #    Computes along whole trajectory
+        phidat.compute(u.trajectory, skip=config['sliceVal'])
+        psidat.compute(u.trajectory, skip=config['sliceVal'])
+    
+        #    Converts to nd-array and changes from [numRes,1,sliced numSamples] 
         #   to [numRes,sliced numSamples]
-		phidat =  array(phidat).reshape(numRes,-1);
-		psidat =  array(psidat).reshape(numRes,-1);
-		
-		"""	Data stored as  | sin( phi_(i) )   |---
-							| cos( phi_(i) )   |---
-							| sin( psi_(i) ) |---
-							| cos( psi_(i) ) |---"""
-		didat = np.empty((4*phidat.shape[0], phidat.shape[1]));
-		didat[0::4,:] = np.sin(phidat);
-		didat[1::4,:] = np.cos(phidat);
-		didat[2::4,:] = np.sin(psidat);
-		didat[3::4,:] = np.cos(psidat);
+        phidat =  array(phidat).reshape(numRes,-1);
+        psidat =  array(psidat).reshape(numRes,-1);
+        
+        """    Data stored as  | sin( phi_(i) )   |---
+                            | cos( phi_(i) )   |---
+                            | sin( psi_(i) ) |---
+                            | cos( psi_(i) ) |---"""
+        didat = np.empty((4*phidat.shape[0], phidat.shape[1]));
+        didat[0::4,:] = np.sin(phidat);
+        didat[1::4,:] = np.cos(phidat);
+        didat[2::4,:] = np.sin(psidat);
+        didat[3::4,:] = np.cos(psidat);
 
-		if count == 1:
-			fulldat = np.memmap(filename,
+        if count == 1:
+            fulldat = np.memmap(filename,
                                 dtype='float64',
                                 mode='w+',
                                 shape=(useable_res*4, tmplen),);
 
-			fulldat[:,:] = didat.astype('float64');
-			map_shape = fulldat.shape;
-			del fulldat;
-			del didat;
-		else:
-			map_shape = mmap_concat(map_shape, didat, filename);
-	#	End loop --------------------------------------------------------------
-	
-	fulldat = np.memmap(filename, dtype='float64', mode='r+', shape=map_shape);
-	
+            fulldat[:,:] = didat.astype('float64');
+            map_shape = fulldat.shape;
+            del fulldat;
+            del didat;
+        else:
+            map_shape = mmap_concat(map_shape, didat, filename);
+    #    End loop --------------------------------------------------------------
+    
+    fulldat = np.memmap(filename, dtype='float64', mode='r+', shape=map_shape);
+    
     np.save(os.path.join(savedir, '{0}_dihedral_data.npy'.format(config['pname'])), fulldat[:,:]);
     np.save(os.path.join(savedir, '{0}_resnames.npy'.format(config['pname'])), resnames);
     
     del fulldat;
 
-	icajade, icafile, mapshape = jade_calc(config, filename, map_shape);
-	return icajade, icafile, mapshape;
+    icajade, icafile, mapshape = jade_calc(config, filename, map_shape);
+    return icajade, icafile, mapshape;
 #================================================
 
 #================================================
