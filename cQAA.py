@@ -169,7 +169,7 @@ def genCumSum(config, pcas, pcab):
 
 #================================================
 def genKurtosisPlot(config, filename, mapshape):
-    mapcoords = np.memmap(filename, dtype='float64', mode='r', shape=mapshape);
+    mapcoords = np.memmap(filename, dtype='float64', mode='r+', shape=mapshape);
 
     #   May have to truncate
     numTraj = mapcoords.shape[1] // config['trajLen'];
