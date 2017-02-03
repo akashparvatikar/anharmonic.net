@@ -1,1 +1,0 @@
-wQAA is an analysis tool for Molecular Dynamic protein simulations.  It employs the Joint Approximated Diagonalization of Eigen-Matrices [(JADE)](http://perso.telecom-paristech.fr/~cardoso/guidesepsou.html) to exploit the kurtosis of the data and separate functional conformational groupings from a Protein Simulation through a projection into a lower dimensional basis.

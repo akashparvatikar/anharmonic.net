@@ -1,7 +1,0 @@
-aff: hivp_aff_60d_31n.npz
-numblock: 1
-n_eigv: 16
-saveDir: 'savefiles/'
-figDir: 'savefiles/figures'
-logfile: 'log.txt'
-name: 'hivp'
