@@ -28,7 +28,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/pypa/sampleproject',
+    url='https://github.com/acadev/anharmonic.net',
 
     # Author details
     author='Gabriel Vacaliuc, Arvind Ramanathan, Chakra S. Chennubhotla',
