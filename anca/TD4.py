@@ -1,3 +1,9 @@
+"""
+TD4
+
+This module contains only one function, TD4, which does joint diagonalization of cumulant matrices of order 4 which depends on the time delays. It allows us to extract signals which are as independent as possible and which was not obtained while performing SD2, TD2.
+"""
+
 import numpy as np
 from sys import stdout 
 from numpy import abs, append, arange, arctan2, argsort, array, concatenate, \
@@ -10,9 +16,31 @@ import numpy
 import matplotlib.pyplot as plt
 import warnings
 
-# perform 4th order temporal decorrelation
-def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
+def TD4(Z, m=None,V=None, lag=None, verbose=True):
  
+    """
+    TD4 - Temporal Decorrelation of 4th order of real signals 
+    
+    Parameters:
+    
+        Z -- an m x T spatially uncorrelated of order 2 and temporally uncorrelated 
+        of order 2 matrix (m subspaces, T samples). May be a  numpy array or a matrix where                  
+                m: number of subspaces we are interested in
+                T: Number of snapshots of MD trajectory
+        
+        V -- separating matrix obtained after doing the PCA analysis on m components
+             of real data followed by temporal decorrelation of the spatially whitened 
+             data
+        
+        lag -- lag time in the form of an integer denoting by time steps
+        
+        verbose -- print information on progress. Default is True.
+    
+    Returns:
+    
+       Btd4 -- separating matrix                 
+        """
+    
     # GB: we do some checking of the input arguments and copy data to new
     # variables to avoid messing with the original input. We also require double
     # precision (float64) and a numpy matrix type for X.
@@ -23,7 +51,7 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
     if m==None:
         m=n 	# Number of sources defaults to # of sensors
     assert m<=n,\
-        "jadeTD -> Do not ask more sources (%d) than sensors (%d )here!!!" % (m,n)
+        "TD4 -> Do not ask more sources (%d) than sensors (%d )here!!!" % (m,n)
         
     print "4th order Temporal Decorrelation -> Estimating cumulant matrices"
     
@@ -55,6 +83,8 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
         # the joint diagonalization criterion
         
         Qij = dot(multiply(Xijm , Z[0: T-lag :]).T  , Z[lag : T :]) / float(T - lag)  - R - 2 * dot(R[:,im], R[:,im].T)
+        
+        # To ensure symmetricity of the covariance matrix a mathematical  computation is done
         Qij = (Qij + Qij.T)/2
         CM[:,Range]	= Qij    
         Range = Range  + m 
@@ -62,6 +92,8 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
                 Xijm = multiply(Z[0 : T - lag :, im] , Z[lag : T  :, jm ])
                 Qij = sqrt(2) * dot(multiply(Xijm, Z[0 :T - lag : ]).T , Z[lag : T :]) / float(T - lag) \
                     - R[:,im] * R[:,jm].T - R[:,jm] * R[:,im].T
+                
+                # To ensure symmetricity of the covariance matrix a mathematical  computation is done
                 Qij = (Qij + Qij.T)/2
                 CM[:,Range]	= Qij
                 Range = Range + m 
@@ -130,7 +162,7 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
                     s = sin(theta)
                     G = matrix([[c, -s] , [s, c] ])
                     pair = array([p,q])
-                    V[:,pair] = V[:,pair] * G
+                    H[:,pair] = H[:,pair] * G
                     CM[pair,:] = G.T * CM[pair,:]
                     CM[:,concatenate([Ip,Iq])] = \
                         append( c*CM[:,Ip]+s*CM[:,Iq], -s*CM[:,Ip]+c*CM[:,Iq], \
@@ -147,11 +179,11 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
     # A separating matrix
     # ===================
     
-    Btd4 = V.T * B2
+    Btd4 = H.T * V
     
     # Permute the rows of the separating matrix B to get the most energetic components first.
     # Here the **signals** are normalized to unit variance.  Therefore, the sort is
-    # according to the norm of the columns of A = pinv(B)
+    # according to the norm of the columns of A = pinv(Btd4)
 
     if verbose:
         print >> stdout, "TD4 -> Sorting the components"
@@ -167,5 +199,46 @@ def TD4(Z,m= None, B2 = None, lag = None, verbose= True):
     b	= Btd4[:,0]
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
     Btd4 = diag(signs) * Btd4
-   
+    print Btd4.shape
     return Btd4
+
+    """
+    
+    Main references:
+    @article{Special Section on BSS: Independent Component Analysis and Signal Separation
+      title 	= "Robust Independent Component Analysis via Time-Delayed Cumulant Functions",
+      author       = "Pando Georgiev and Andrzej Cichocki",
+      HTML 	= "http://search.ieice.org/bin/summary.php?id=e86-a_3_573",
+      journal      = "IEE Proceedings-F",
+      month = march, number = 3, pages = {573-580}, volume = E-86-A, year = 2003}
+      
+      Notes:
+      ** Here we consider signals which are spatially and temporally decorrelated of 
+      order 2
+      
+      1) Blind Source Separation problem of signals which are temporally correlated of 
+      order 4 can be converted to a symmetric eigenvalue problem of generalized cumulant 
+      matrix CM. The measure of independence corresponds to the 'diagonality' of a set of cumulant matrices. 
+      Joint diagonalization of these cumulant matrices is done depending on time delay.
+      
+      2) We expect to use small number of significant eigenmatrices to efficiently 
+      summarize all the 4th order information. 
+      
+      3) Since we are dealing with real signals, it becomes easy to exploit the 
+      symmetries of the cumulants to further reduce the number of matrices to be 
+      diagonalized.
+      
+      4) Computational errors can destroy the symmetricity of the cumulant matrices Qij and thus it's restored by performing
+      Qij = 0.5*[Qij + Qij.T]
+      
+      5) The rows of the separating matrix Btd4 are resorted in such a way that the
+      columns of the corresponding mixing matrix A=pinv(Btd4) are in decreasing order of (Euclidian)
+      norm.  This is a simple, `almost canonical" way of fixing the indetermination of
+      permutation.  It has the effect that the first rows of the recovered signals (ie the
+      first rows of S = Btd4*data) correspond to the most energetic *components*.  Recall however that
+      the source signals in S=Btd4 * data have unit variance.  Therefore, when we say that the
+      observations are unmixed in order of decreasing energy, this energetic signature is to
+      be found as the norm of the columns of A=pinv(Btd4) and not as the variances of the
+      separated source signals.
+      
+      """
