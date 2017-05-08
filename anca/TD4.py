@@ -38,7 +38,7 @@ def TD4(Z, m=None,V=None, lag=None, verbose=True):
     
     Returns:
     
-       Btd4 -- separating matrix                 
+       W -- separating matrix                 
         """
     
     # GB: we do some checking of the input arguments and copy data to new
@@ -179,28 +179,28 @@ def TD4(Z, m=None,V=None, lag=None, verbose=True):
     # A separating matrix
     # ===================
     
-    Btd4 = H.T * V
+    W = H.T * V
     
     # Permute the rows of the separating matrix B to get the most energetic components first.
     # Here the **signals** are normalized to unit variance.  Therefore, the sort is
-    # according to the norm of the columns of A = pinv(Btd4)
+    # according to the norm of the columns of A = pinv(W)
 
     if verbose:
         print >> stdout, "TD4 -> Sorting the components"
     
-    A = pinv(Btd4)
+    A = pinv(W)
     keys =  array(argsort(multiply(A,A).sum(axis=0)[0]))[0]
-    Btd4 = Btd4[keys,:]
-    Btd4 = Btd4[::-1,:]     # % Is this smart ?
+    W = W[keys,:]
+    W = W[::-1,:]     # % Is this smart ?
     
     
     if verbose:
         print >> stdout, "TD4 -> Fixing the signs"
-    b	= Btd4[:,0]
+    b	= W[:,0]
     signs = array(sign(sign(b)+0.1).T)[0] # just a trick to deal with sign=0
-    Btd4 = diag(signs) * Btd4
-    print Btd4.shape
-    return Btd4
+    W = diag(signs) * W
+    print W.shape
+    return W
 
     """
     
