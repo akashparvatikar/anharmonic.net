@@ -101,7 +101,7 @@ def TD4(Z, m=None,V=None, lag=None, verbose=True):
     
     nbcm = int(nbcm)
     # Now we have nbcm = m(m+1)/2 cumulants matrices stored in a big m x m*nbcm array.
-    V = matrix(eye(m, dtype=float64))
+    H = matrix(eye(m, dtype=float64))
         
     Diag = zeros(m, dtype=float64)
     On = 0.0
@@ -138,7 +138,7 @@ def TD4(Z, m=None,V=None, lag=None, verbose=True):
             print >> stdout, "TD4 -> Sweep #%3d" % sweep ,
         sweep = sweep + 1
         upds  = 0
-        Vkeep = V
+        Hkeep = H
       
         for p in range(m-1):
             for q in range(p+1, m):
