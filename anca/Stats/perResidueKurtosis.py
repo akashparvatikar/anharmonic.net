@@ -1,4 +1,5 @@
 import numpy
+import scipy.stats
 
 def perResidueKurtosis(caDevsMDall, Na=None):
   
