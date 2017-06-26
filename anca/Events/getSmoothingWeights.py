@@ -1,7 +1,7 @@
 import numpy
 
 def getSmoothingWeights(dt, windowsize, halflife):
-    tau = (halflife/dt)/ numpy.log(2) # half-life = 5000ns and time between 2 consecutive time frame = 25ns
+    tau = (halflife/dt)/ numpy.log(2) 
     alpha = 1 - numpy.exp(-1/tau)
     s = 0;
     wt = numpy.zeros((windowsize,1));
