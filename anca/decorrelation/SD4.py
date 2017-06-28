@@ -10,8 +10,6 @@ from numpy import abs, append, arange, arctan2, argsort, array, concatenate, \
                   cos, diag, dot, eye, float32, float64, matrix, multiply, ndarray, newaxis, \
                   sign, sin, sqrt, zeros, ones
 from numpy.linalg import eig, pinv
-import pyemma.msm as msm
-import pyemma.coordinates as coor 
 import numpy
 import matplotlib.pyplot as plt
 import warnings
