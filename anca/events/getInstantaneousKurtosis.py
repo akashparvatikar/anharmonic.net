@@ -1,7 +1,7 @@
 import numpy
 import scipy.stats
 
-def getInstantaneousKurtosis(caDevsMDall, dt, windowsize, halflife, perRes=True, smooth=False):
+def getInstantaneousKurtosis(caDevsMDall, dt, windowsize, halflife,wt, perRes=True, smooth=False):
     kresVals = numpy.zeros((caDevsMDall.shape[0], caDevsMDall.shape[1]));
     kvals = numpy.zeros((caDevsMDall.shape[1],1));
    
@@ -13,7 +13,6 @@ def getInstantaneousKurtosis(caDevsMDall, dt, windowsize, halflife, perRes=True,
     c = numpy.zeros(caDevsMDall.shape[1]-windowsize);
     if not perRes and smooth:
         val = numpy.zeros((windowsize,1));
-        wt = getSmoothingWeights(dt, windowsize, halflife);
         for i in range (0, caDevsMDall.shape[1]-windowsize):
             a = wt[0:windowsize];
             a = a.reshape(windowsize);
