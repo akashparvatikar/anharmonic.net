@@ -1,7 +1,7 @@
 import numpy
 import scipy.stats
 
-def getInstantaenousKurtosis(caDevsMDall, dt, windowsize, halflife, perRes=True, smooth=False):
+def getInstantaneousKurtosis(caDevsMDall, dt, windowsize, halflife, perRes=True, smooth=False):
     kresVals = numpy.zeros((caDevsMDall.shape[0], caDevsMDall.shape[1]));
     kvals = numpy.zeros((caDevsMDall.shape[1],1));
    
