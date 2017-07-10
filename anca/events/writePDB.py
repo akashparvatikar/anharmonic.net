@@ -19,7 +19,7 @@ def writePDB(array_event, topfile, traj_list, step=None):
                 W.write(allatoms);
         event.append(W)
         
-        pre_array = np.array(array_event[i])
+        pre_array = numpy.array(array_event[i])
         pre_array = (pre_array - prev_frame) * step
         with mdanal.Writer("pre-event"+str(i+1)+".pdb", allatoms.n_atoms) as W:
             for ts in u_event.trajectory[np.asarray(pre_array)]:
