@@ -8,7 +8,6 @@ def writePDB(array_event, topfile, traj_list, step=None):
     
     # used to track interesting events and pre-events of the conformers
     event = []
-    
     pre_event = []
     pre_array = []
     prev_frame = 50 # tracking the frame prior to an event 
