@@ -1,4 +1,4 @@
-def getDict(topfile, traj_list, dim, Na):
+def getDictionary(topfile, traj_list, dim, Na):
     
     my_dict = {}
     last = 0
