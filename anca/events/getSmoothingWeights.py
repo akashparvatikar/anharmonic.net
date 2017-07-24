@@ -6,6 +6,7 @@ def getSmoothingWeights(dt, windowsize, halflife):
     s = 0;
     wt = numpy.zeros((windowsize,1));
     for i in range (0,windowsize):
-        wt[i] = (alpha * numpy.exp(-(windowsize-i)/tau))/0.96499303
+        wt[i] = (alpha * numpy.exp(-(windowsize-i)/tau))
         s = s + wt[i];
+    wt = wt/s;
     return wt;
