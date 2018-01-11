@@ -22,7 +22,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.1.5',
+    version='0.1.3',
 
     description='Anharmonic Conformational Analysis',
     long_description=long_description,
@@ -31,7 +31,7 @@ setup(
     url='https://github.com/acadev/anharmonic.net',
 
     # Author details
-    author='Gabriel Vacaliuc, Arvind Ramanathan, Chakra S. Chennubhotla',
+    author='Gabriel Vacaliuc, Arvind Ramanathan, Chakra S. Chennubhotla, Akash Parvatikar',
     author_email='acadeveloper0@gmail.com',
 
     # Choose your license
